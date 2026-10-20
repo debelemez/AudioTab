@@ -105,29 +105,67 @@ final class Updater: ObservableObject {
         }
     }
 
+    /// Önce GitHub API (sürüm notlarıyla), olmazsa github.com/…/releases/latest yönlendirmesi
+    /// (API sınırı ya da ağ engeli olsa bile çalışır).
     static func fetchLatest() async throws -> ReleaseInfo {
+        do {
+            return try await fetchFromAPI()
+        } catch let apiError {
+            do {
+                return try await fetchFromRedirect()
+            } catch {
+                throw apiError
+            }
+        }
+    }
+
+    private static func fetchFromAPI() async throws -> ReleaseInfo {
         guard let url = URL(string: "https://api.github.com/repos/\(UpdateConfig.repo)/releases/latest") else {
             throw UpdateError.message("Repo adresi geçersiz")
         }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        req.setValue("AudioTab", forHTTPHeaderField: "User-Agent")
+        req.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        req.setValue("AudioTab-Updater", forHTTPHeaderField: "User-Agent")
         let (data, resp) = try await URLSession.shared.data(for: req)
-        if let http = resp as? HTTPURLResponse, http.statusCode == 404 {
-            throw UpdateError.message("Henüz yayınlanmış sürüm yok")
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        guard status == 200 else {
+            if status == 404 { throw UpdateError.message("Henüz yayınlanmış sürüm yok") }
+            let msg = json?["message"] as? String ?? "HTTP \(status)"
+            throw UpdateError.message("GitHub: \(msg)")
         }
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tag = json["tag_name"] as? String else {
+        guard let json, let tag = json["tag_name"] as? String else {
             throw UpdateError.message("GitHub cevabı okunamadı")
         }
-        let assets = json["assets"] as? [[String: Any]] ?? []
-        guard let asset = assets.first(where: { ($0["name"] as? String) == "AudioTab.zip" }),
-              let dl = (asset["browser_download_url"] as? String).flatMap(URL.init(string:)) else {
-            throw UpdateError.message("Sürümde AudioTab.zip yok")
-        }
-        let page = (json["html_url"] as? String).flatMap(URL.init(string:)) ?? UpdateConfig.releasesPage
         let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        let assets = json["assets"] as? [[String: Any]] ?? []
+        let dl = assets.first(where: { ($0["name"] as? String) == "AudioTab.zip" })
+            .flatMap { ($0["browser_download_url"] as? String).flatMap(URL.init(string:)) }
+            ?? downloadURL(tag: tag)
+        let page = (json["html_url"] as? String).flatMap(URL.init(string:)) ?? UpdateConfig.releasesPage
         return ReleaseInfo(version: version, notes: json["body"] as? String ?? "", zipURL: dl, page: page)
+    }
+
+    /// github.com/…/releases/latest → …/releases/tag/v2.3.0 yönlendirmesinden sürümü al
+    private static func fetchFromRedirect() async throws -> ReleaseInfo {
+        guard let url = URL(string: "https://github.com/\(UpdateConfig.repo)/releases/latest") else {
+            throw UpdateError.message("Repo adresi geçersiz")
+        }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        req.httpMethod = "HEAD"
+        req.setValue("AudioTab-Updater", forHTTPHeaderField: "User-Agent")
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        guard let final = resp.url, final.path.contains("/releases/tag/") else {
+            throw UpdateError.message("Henüz yayınlanmış sürüm yok")
+        }
+        let tag = final.lastPathComponent
+        let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        return ReleaseInfo(version: version, notes: "", zipURL: downloadURL(tag: tag), page: final)
+    }
+
+    private static func downloadURL(tag: String) -> URL {
+        URL(string: "https://github.com/\(UpdateConfig.repo)/releases/download/\(tag)/AudioTab.zip")!
     }
 
     /// "2.10.0" > "2.9.3"
