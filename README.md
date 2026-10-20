@@ -146,6 +146,7 @@ Each shortcut can be turned off in Settings; when it's off, the macOS shortcut c
 - No usage data is collected and nothing is sent anywhere. The app only goes online to check GitHub for a new version, and you can turn that off.
 - Window previews are taken only while ⌘Tab is held, one frame per window, and are never written to disk.
 - The code is fully open: see the [Sources](Sources) folder for what it does.
+- Security: releases are signed and the updater only installs builds signed with our certificate. The code was audited in October 2026 with no vulnerabilities found. See [SECURITY.md](SECURITY.md) and the [audit report](docs/security-audit.md).
 
 ---
 

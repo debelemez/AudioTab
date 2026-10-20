@@ -146,6 +146,7 @@ Her kısayol Ayarlar'dan tek tek kapatılabilir; kapatılınca macOS'un kendisi 
 - Kullanım verisi toplanmaz, hiçbir şey bir yere gönderilmez. İnternete sadece GitHub'da yeni sürüm var mı diye bakmak için çıkar; bu da kapatılabilir.
 - Pencere önizlemeleri sadece ⌘Tab basılıyken, pencere başına tek kare olarak alınır ve diske yazılmaz.
 - Kod tamamen açık; ne yaptığını [Sources](Sources) klasöründen görebilirsin.
+- Güvenlik: Sürümler imzalı. Güncelleyici sadece bizim sertifikamızla imzalanmış sürümleri kurar. Kod Ekim 2026'da denetlendi, açık bulunmadı. Ayrıntılar [SECURITY.md](SECURITY.md) ve [denetim raporu](docs/security-audit.md) dosyalarında (İngilizce).
 
 ---
 
