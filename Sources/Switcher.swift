@@ -1,6 +1,6 @@
 // AudioTab — pencere değiştirici kısmı (eski GlassTab). Ses kısmı ayrı dosyalarda.
 // Önizleme görüntüleri SADECE Cmd+Tab basılıyken, SADECE pencere başına tek kare olarak alınır.
-// Hiçbir şey kaydedilmez, diske yazılmaz, internete gönderilmez (uygulamada ağ kodu yok).
+// Hiçbir şey kaydedilmez, diske yazılmaz, internete gönderilmez (tek ağ erişimi: GitHub'dan güncelleme kontrolü).
 // Boştayken hiçbir timer/polling çalışmaz.
 
 import AppKit

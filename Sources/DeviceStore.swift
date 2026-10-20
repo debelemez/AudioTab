@@ -131,7 +131,9 @@ final class DeviceStore: ObservableObject {
                     known[i].symbol = dev.symbol
                     changed = true
                 }
-            } else if let i = known.firstIndex(where: { k in k.name == dev.name && !connectedUIDs.contains(k.uid) }) {
+            } else if known.filter({ $0.name == dev.name }).count == 1,
+                      let i = known.firstIndex(where: { k in k.name == dev.name && !connectedUIDs.contains(k.uid) }) {
+                // Yalnızca bu isimde tek bir kayıtlı cihaz varsa taşı (aynı isimli başka cihaza sessizce geçmesin)
                 // Aynı cihaz farklı porta takılmış (USB'de UID değişebilir): seçimleri taşı
                 let old = known[i].uid
                 known[i].uid = dev.uid

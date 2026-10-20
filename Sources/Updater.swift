@@ -11,6 +11,12 @@ enum UpdateConfig {
     /// "kullanıcı/repo"
     static let repo = "debelemez/AudioTab"
     static var releasesPage: URL { URL(string: "https://github.com/\(repo)/releases")! }
+    /// Güncellemeler yalnızca bu kimliğe uyan paketse kurulur: paket kimliği +
+    /// signing/AudioTab.pem sertifikasının SHA-1 parmak izi. Yerelde ad-hoc derlenmiş
+    /// kopyalar da aynı kurala tabi (eskiden yalnızca paket kimliğine bakılıyordu).
+    static let codeRequirement =
+        "identifier \"com.firewallstudio.audiotab\" and certificate leaf = H\"1393C015627262B00A7AABAF54ECDF0AF9C39BAD\""
+    static let allowedDownloadHosts: Set<String> = ["github.com", "objects.githubusercontent.com"]
 }
 
 struct ReleaseInfo {
@@ -142,6 +148,7 @@ final class Updater: ObservableObject {
         let assets = json["assets"] as? [[String: Any]] ?? []
         let dl = assets.first(where: { ($0["name"] as? String) == "AudioTab.zip" })
             .flatMap { ($0["browser_download_url"] as? String).flatMap(URL.init(string:)) }
+            .flatMap { u in u.scheme == "https" && UpdateConfig.allowedDownloadHosts.contains(u.host ?? "") ? u : nil }
             ?? downloadURL(tag: tag)
         let page = (json["html_url"] as? String).flatMap(URL.init(string:)) ?? UpdateConfig.releasesPage
         return ReleaseInfo(version: version, notes: json["body"] as? String ?? "", zipURL: dl, page: page)
@@ -191,6 +198,7 @@ final class Updater: ObservableObject {
                 let fm = FileManager.default
                 let work = fm.temporaryDirectory.appendingPathComponent("AudioTabUpdate-\(UUID().uuidString)", isDirectory: true)
                 try fm.createDirectory(at: work, withIntermediateDirectories: true)
+                defer { try? fm.removeItem(at: work) }   // başarısız olsa da geçici dosyaları sil
                 let (tmp, resp) = try await URLSession.shared.download(from: info.zipURL)
                 if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
                     throw UpdateError.message(L("İndirme başarısız (%@)", "\(http.statusCode)"))
@@ -203,11 +211,15 @@ final class Updater: ObservableObject {
                 let newApp = work.appendingPathComponent("AudioTab.app")
                 guard fm.fileExists(atPath: newApp.path) else { throw UpdateError.message(L("Paket içinde AudioTab.app yok")) }
                 try Self.verify(newApp)
+                // İmzalı paketin içindeki sürüm, yayındaki sürümle aynı ve bizden yeni olmalı (geri sürüm yok)
+                let newVersion = Bundle(url: newApp)?.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+                guard newVersion == info.version, Self.isNewer(newVersion, than: self.currentVersion) else {
+                    throw UpdateError.message(L("Paketteki sürüm (%@) beklenenle uyuşmuyor", newVersion))
+                }
                 _ = try? Self.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
 
                 let dest = Bundle.main.bundleURL
                 try Self.replace(dest, with: newApp)
-                try? fm.removeItem(at: work)
 
                 DispatchQueue.main.async {
                     beforeRelaunch {
@@ -258,40 +270,26 @@ final class Updater: ObservableObject {
         return p.terminationStatus
     }
 
-    /// Yeni sürümün imzası geçerli mi ve bizimle aynı sertifikayla mı imzalanmış?
-    /// (Biz yerelde ad-hoc derlendiysek sertifika karşılaştırılamaz; o zaman paket kimliği kontrol edilir.)
+    /// Yeni sürümün imzası geçerli mi ve yayın sertifikasıyla mı imzalanmış?
+    /// Kural sabit (UpdateConfig.codeRequirement): çalışan kopyanın nasıl imzalandığına bakmaz.
     static func verify(_ newApp: URL) throws {
         var newCodeRef: SecStaticCode?
         guard SecStaticCodeCreateWithPath(newApp as CFURL, [], &newCodeRef) == errSecSuccess, let newCode = newCodeRef else {
             throw UpdateError.message(L("Yeni sürümün imzası okunamadı"))
         }
-        guard SecStaticCodeCheckValidity(newCode, [], nil) == errSecSuccess else {
+        var reqRef: SecRequirement?
+        guard SecRequirementCreateWithString(UpdateConfig.codeRequirement as CFString, [], &reqRef) == errSecSuccess,
+              let req = reqRef else {
+            throw UpdateError.message(L("Yeni sürümün imzası okunamadı"))
+        }
+        // kSecCSCheckAllArchitectures (1<<0) | kSecCSCheckNestedCode (1<<3): evrensel ikilinin iki dilimi de
+        let flags = SecCSFlags(rawValue: (1 << 0) | (1 << 3))
+        let status = SecStaticCodeCheckValidity(newCode, flags, req)
+        if status == errSecCSReqFailed {
+            throw UpdateError.message(L("Yeni sürüm farklı bir sertifikayla imzalanmış, yüklenmedi"))
+        }
+        guard status == errSecSuccess else {
             throw UpdateError.message(L("Yeni sürümün imzası geçersiz"))
-        }
-
-        var selfRef: SecCode?
-        var selfStaticRef: SecStaticCode?
-        guard SecCodeCopySelf([], &selfRef) == errSecSuccess, let me = selfRef,
-              SecCodeCopyStaticCode(me, [], &selfStaticRef) == errSecSuccess, let meStatic = selfStaticRef else {
-            throw UpdateError.message(L("Mevcut uygulamanın imzası okunamadı"))
-        }
-        var infoRef: CFDictionary?
-        _ = SecCodeCopySigningInformation(meStatic, SecCSFlags(rawValue: 1 << 1), &infoRef)   // kSecCSSigningInformation
-        let info = infoRef as? [String: Any] ?? [:]
-        let flags = (info[kSecCodeInfoFlags as String] as? NSNumber)?.uint32Value ?? 0
-        let adhoc = flags & SecCodeSignatureFlags.adhoc.rawValue != 0
-
-        if adhoc {
-            let newID = Bundle(url: newApp)?.bundleIdentifier
-            guard newID != nil, newID == Bundle.main.bundleIdentifier else {
-                throw UpdateError.message(L("Paket kimliği uyuşmuyor"))
-            }
-        } else {
-            var reqRef: SecRequirement?
-            guard SecCodeCopyDesignatedRequirement(meStatic, [], &reqRef) == errSecSuccess, let req = reqRef,
-                  SecStaticCodeCheckValidity(newCode, [], req) == errSecSuccess else {
-                throw UpdateError.message(L("Yeni sürüm farklı bir sertifikayla imzalanmış, yüklenmedi"))
-            }
         }
     }
 }

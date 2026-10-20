@@ -26,11 +26,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Sürüm
         id: ver
         run: |
           VERSION="$(tr -d '[:space:]' < VERSION)"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then echo "Geçersiz VERSION: $VERSION"; exit 1; fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if gh release view "v$VERSION" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -38,20 +40,23 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # İmza anahtarı yalnızca main'e push'ta açılır (PR / elle tetiklemede ad-hoc derlenir)
       - name: İmza sertifikasını yükle
-        if: env.HAS_CERT == 'true'
+        if: env.HAS_CERT == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           CERT_P12: ${{ secrets.CERT_P12 }}
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
         run: |
           echo "$CERT_P12" | tr -d '[:space:]' | base64 --decode > cert.p12
-          security create-keychain -p ci build.keychain
+          KC_PW="$(openssl rand -hex 24)"
+          echo "::add-mask::$KC_PW"
+          security create-keychain -p "$KC_PW" build.keychain
           security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
           security default-keychain -s build.keychain
-          security unlock-keychain -p ci build.keychain
+          security unlock-keychain -p "$KC_PW" build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
-          security import cert.p12 -k build.keychain -P "$(echo -n "$CERT_PASSWORD" | tr -d '[:space:]')" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k ci build.keychain
+          security import cert.p12 -k build.keychain -P "$(echo -n "$CERT_PASSWORD" | tr -d '[:space:]')" -T /usr/bin/codesign -x
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_PW" build.keychain
           sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain signing/AudioTab.pem || true
           rm cert.p12
           IDENTITY=$(security find-identity -p codesigning build.keychain | awk '/AudioTab/ {print $2; exit}')
@@ -62,9 +67,11 @@ jobs:
           echo "İmza kimliği: $IDENTITY"
 
       - name: Derle
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
           chmod +x build.sh
-          ./build.sh --universal --version "${{ steps.ver.outputs.version }}"
+          ./build.sh --universal --version "$VERSION"
           codesign -dv --verbose=2 AudioTab.app 2>&1 | grep -E "Identifier|Authority|Signature" || true
 
       - name: Paketle
@@ -77,7 +84,7 @@ jobs:
           path: AudioTab.zip
 
       - name: Sürümü yayınla
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.HAS_CERT == 'true' && steps.ver.outputs.exists == 'false'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_CERT == 'true' && env.SIGN_IDENTITY != '' && steps.ver.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.version }}

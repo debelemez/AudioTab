@@ -278,7 +278,7 @@ private let englishStrings: [String: String] = [
     "Yeni sürümün imzası okunamadı": "Couldn't read the new version's signature",
     "Yeni sürümün imzası geçersiz": "The new version's signature is invalid",
     "Mevcut uygulamanın imzası okunamadı": "Couldn't read the current app's signature",
-    "Paket kimliği uyuşmuyor": "Bundle identifier doesn't match",
+    "Paketteki sürüm (%@) beklenenle uyuşmuyor": "The version inside the package (%@) doesn't match the release",
     "Yeni sürüm farklı bir sertifikayla imzalanmış, yüklenmedi": "The new version is signed with a different certificate and was not installed",
     "%@ hata verdi (%@)": "%@ failed (%@)",
 ]

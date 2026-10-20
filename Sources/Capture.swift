@@ -47,7 +47,7 @@ enum CaptureSettings {
         set { d.set(newValue, forKey: "capture.sound") }
     }
     static var fps: Int {
-        get { d.object(forKey: "capture.fps") as? Int ?? 60 }
+        get { min(max(d.object(forKey: "capture.fps") as? Int ?? 60, 1), 120) }
         set { d.set(newValue, forKey: "capture.fps") }
     }
     /// true: kayıpsıza yakın (büyük dosya), false: yüksek kalite
