@@ -824,8 +824,8 @@ struct ZonePickerView: View {
     static func width(screens: Int) -> CGFloat {
         screens > 1 ? max(600, CGFloat(screens) * 156 + 280) : 600
     }
-    /// başlık 40 + 3 satır düzen (3 × 128 + 2 × 12) + alt yazı 18 + aralıklar 24 + kenar 36
-    static let height: CGFloat = 40 + 3 * 128 + 24 + 18 + 24 + 36
+    /// başlık 40 + 3 satır düzen (3 × 128 + 2 × 12 = 408) + alt yazı 18 + aralıklar 24 + kenar 36 = 526
+    static let height: CGFloat = 526
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
