@@ -1,0 +1,67 @@
+name: Release
+
+# "v2.3.0" gibi bir etiket gönderilince: Mac'te derle, imzala, GitHub Releases'e AudioTab.zip koy.
+# Uygulamanın içindeki güncelleyici bu sürümü bulup kendini günceller.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      HAS_CERT: ${{ secrets.CERT_P12 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: İmza sertifikasını yükle
+        if: env.HAS_CERT == 'true'
+        env:
+          CERT_P12: ${{ secrets.CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+        run: |
+          echo "$CERT_P12" | base64 --decode > cert.p12
+          security create-keychain -p ci build.keychain
+          security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s build.keychain
+          security unlock-keychain -p ci build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k ci build.keychain
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain signing/AudioTab.cer || true
+          rm cert.p12
+          IDENTITY=$(security find-identity -p codesigning build.keychain | awk '/AudioTab/ {print $2; exit}')
+          if [ -z "$IDENTITY" ]; then
+            IDENTITY=$(security find-identity build.keychain | awk '/AudioTab/ {print $2; exit}')
+          fi
+          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "İmza kimliği: $IDENTITY"
+
+      - name: Derle
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$(cat VERSION)"; fi
+          ./build.sh --universal --version "$VERSION"
+          codesign -dv --verbose=2 AudioTab.app 2>&1 | grep -E "Identifier|Authority|Signature" || true
+
+      - name: Paketle
+        run: ditto -c -k --keepParent AudioTab.app AudioTab.zip
+
+      - name: Derleme çıktısı
+        uses: actions/upload-artifact@v4
+        with:
+          name: AudioTab
+          path: AudioTab.zip
+
+      - name: Sürümü yayınla
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AudioTab.zip
+          generate_release_notes: true

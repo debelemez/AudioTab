@@ -1,0 +1,8 @@
+AudioTab.app/
+AudioTab.zip
+*.p12
+*.key
+*-key.pem
+.DS_Store
+.build/
+signing-secrets/
