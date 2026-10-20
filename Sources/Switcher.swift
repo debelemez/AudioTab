@@ -680,6 +680,12 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
             return true
         case .keyUp:
             return active
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            // Panel açıkken kartların dışına (boşluğa ya da panelin dışına) tıklanınca kapat
+            guard active else { return false }
+            if ui.hitsCard(NSEvent.mouseLocation) == true { return false }   // karta tıklama: kart kendisi işler
+            end()
+            return true
         default:
             return false
         }
@@ -1062,6 +1068,13 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     func updateThumb(_ wid: CGWindowID, _ img: CGImage) {
         lastThumbs[wid] = img
         for c in cells where c.wid == wid { c.setThumb(img) }
+    }
+
+    /// nil: nokta panelin dışında · true: bir kartın üstünde · false: paneldeki boşlukta
+    func hitsCard(_ p: NSPoint) -> Bool? {
+        guard panel.isVisible, panel.frame.contains(p) else { return nil }
+        let local = NSPoint(x: p.x - panel.frame.minX, y: p.y - panel.frame.minY)
+        return cells.contains { $0.frame.contains(local) }
     }
 
     func setSelected(_ i: Int) {
