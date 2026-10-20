@@ -178,3 +178,7 @@ GitHub Actions Mac'te derler, imzalar ve Releases'e `AudioTab.zip` koyar. Uygula
 **Yapı:** `Switcher.swift` (⌘Tab), `AudioKeys.swift` + `DeviceStore.swift` + `CoreAudioHelper.swift` (ses), `Tiling.swift` (ekran bölme), `Capture.swift` (ekran görüntüsü ve kayıt), `Updater.swift` (güncelleme), `Settings.swift`, `App.swift`. Tek bir event tap'i tüm kısayollar paylaşır.
 </details>
 
+
+## Lisans
+
+[MIT](LICENSE). Ücretsiz; kullanabilir, değiştirebilir, paylaşabilirsin.

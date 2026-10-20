@@ -177,3 +177,7 @@ GitHub Actions builds on a Mac, signs, and puts `AudioTab.zip` on Releases. Inst
 
 **Layout:** `Switcher.swift` (⌘Tab), `AudioKeys.swift` + `DeviceStore.swift` + `CoreAudioHelper.swift` (sound), `Tiling.swift` (split screen), `Capture.swift` (screenshots and recording), `Updater.swift` (updates), `Settings.swift`, `App.swift`. All shortcuts share a single event tap.
 </details>
+
+## License
+
+[MIT](LICENSE). Free to use, modify and share.
