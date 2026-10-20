@@ -6,3 +6,4 @@ AudioTab.zip
 .DS_Store
 .build/
 signing-secrets/
+publish.sh
