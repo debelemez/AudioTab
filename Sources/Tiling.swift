@@ -751,10 +751,8 @@ final class ZonePickerModel: ObservableObject {
         model.title = item.title
         model.icon = item.app.icon
 
-        // Genişlik monitör sayısından, yükseklik içerikten (monitör seçimiyle değişmez)
-        host?.layoutSubtreeIfNeeded()
-        let size = NSSize(width: ZonePickerView.width(screens: list.count),
-                          height: max(300, host?.fittingSize.height ?? 420))
+        // Sabit boyut: monitör seçimiyle değişmez, içerik kesilmez
+        let size = NSSize(width: ZonePickerView.width(screens: list.count), height: ZonePickerView.height)
         let screen = list[model.here]
         let f = screen.visibleFrame
         let m = NSEvent.mouseLocation
@@ -824,8 +822,10 @@ struct ZonePickerView: View {
     let controller: ZonePickerController
 
     static func width(screens: Int) -> CGFloat {
-        screens > 1 ? max(580, CGFloat(screens) * 156 + 260) : 580
+        screens > 1 ? max(600, CGFloat(screens) * 156 + 280) : 600
     }
+    /// başlık 40 + 3 satır düzen (3 × 128 + 2 × 12) + alt yazı 18 + aralıklar 24 + kenar 36
+    static let height: CGFloat = 40 + 3 * 128 + 24 + 18 + 24 + 36
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -852,6 +852,7 @@ struct ZonePickerView: View {
                         Text(l.name).font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.75))
                     }
                     .padding(8)
+                    .frame(width: 170, height: 128)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.white.opacity(0.05)))
                 }
             }
@@ -861,8 +862,7 @@ struct ZonePickerView: View {
                 .foregroundStyle(.white.opacity(0.55))
         }
         .padding(18)
-        .frame(width: Self.width(screens: model.screens.count))
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: Self.width(screens: model.screens.count), height: Self.height, alignment: .top)
         .glass(radius: 24)
         .foregroundStyle(Color.white)
         .environment(\.colorScheme, .dark)

@@ -804,6 +804,7 @@ struct CapturePaletteView: View {
     private let indicator = RecordingIndicator()
     private let palette = CapturePalette()
     private let note = NoteController()
+    private let toast = CaptureToast()
     private var scrollCancelled = false
     private var scrolling = false
     private var escMonitors: [Any] = []
@@ -841,13 +842,18 @@ struct CapturePaletteView: View {
         return false
     }
 
-    private func done(_ url: URL?, _ label: String, symbol: String, image: Bool = true) {
+    /// preview: sağ altta önizleme kartı (tıklayınca dosya klasörde seçili açılır). false: küçük bildirim.
+    private func done(_ url: URL?, _ label: String, symbol: String, image: Bool = true, preview: Bool = true) {
         guard let url else {
             hud.show(name: "\(label) kaydedilemedi", symbol: "exclamationmark.triangle.fill")
             return
         }
         if image && CaptureSettings.copyToClipboard { CaptureFiles.copyImage(at: url) }
-        hud.show(name: "\(label) · \(url.deletingLastPathComponent().lastPathComponent)", symbol: symbol)
+        if preview {
+            toast.show(url: url, title: "\(label) kaydedildi", isVideo: !image)
+        } else {
+            hud.show(name: "\(label) · \(url.deletingLastPathComponent().lastPathComponent)", symbol: symbol)
+        }
     }
 
     private func save(_ img: CGImage, to url: URL, scale: CGFloat, label: String) {
@@ -861,7 +867,7 @@ struct CapturePaletteView: View {
     }
 
     /// macOS'un screencapture aracıyla çek (eski sistemler ve alan seçimi için)
-    private func runScreencapture(_ args: [String], url: URL, label: String) {
+    private func runScreencapture(_ args: [String], url: URL, label: String, preview: Bool = true) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
         p.arguments = args + [url.path]
@@ -870,11 +876,11 @@ struct CapturePaletteView: View {
             DispatchQueue.main.async { [weak self] in
                 MainActor.assumeIsolated {
                     // Alan seçimi Esc ile iptal edildiyse dosya yoktur: sessizce geç
-                    if exists { self?.done(url, label, symbol: "camera.fill") }
+                    if exists { self?.done(url, label, symbol: "camera.fill", preview: preview) }
                 }
             }
         }
-        do { try p.run() } catch { done(nil, label, symbol: "camera.fill") }
+        do { try p.run() } catch { done(nil, label, symbol: "camera.fill", preview: preview) }
     }
 
     // MARK: ⌘⇧3 — sadece bulunduğun monitör
@@ -906,7 +912,7 @@ struct CapturePaletteView: View {
     func screenshotArea() {
         guard ensurePermission() else { return }
         let url = CaptureFiles.newURL(.area, prefix: "Ekran Alıntısı", ext: "png")
-        runScreencapture(CaptureSettings.playSound ? ["-i"] : ["-i", "-x"], url: url, label: "Ekran alıntısı")
+        runScreencapture(CaptureSettings.playSound ? ["-i"] : ["-i", "-x"], url: url, label: "Ekran alıntısı", preview: false)
     }
 
     // MARK: ⌘⇧6 — kaydırmalı görüntü
@@ -1045,5 +1051,171 @@ struct CapturePaletteView: View {
             self.done(url, "Ekran kaydı", symbol: "film.fill", image: false)
             completion?()
         }
+    }
+}
+
+
+// MARK: - Çekim sonrası önizleme kartı (sağ alt)
+
+struct CaptureToastView: View {
+    let image: NSImage?
+    let title: String
+    let fileName: String
+    let isVideo: Bool
+    let onOpen: () -> Void
+    let onClose: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Button(action: onOpen) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.black.opacity(0.35))
+                        if let image {
+                            Image(nsImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 128, height: 80)
+                                .clipped()
+                        } else {
+                            Image(systemName: isVideo ? "film" : "photo").font(.system(size: 26)).opacity(0.6)
+                        }
+                        if isVideo {
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundStyle(Color.white)
+                                .shadow(radius: 4)
+                        }
+                    }
+                    .frame(width: 128, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title).font(.system(size: 13, weight: .semibold))
+                        Text(fileName).font(.system(size: 11)).foregroundStyle(.white.opacity(0.7))
+                            .lineLimit(2).truncationMode(.middle)
+                        Label("Klasörde göster", systemImage: "folder")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .frame(width: 180, alignment: .leading)
+                }
+                .padding(12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if hover {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .frame(width: 18, height: 18)
+                        .background(Circle().fill(.black.opacity(0.55)))
+                        .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .padding(6)
+                .help("Kapat")
+            }
+        }
+        .foregroundStyle(Color.white)
+        .glass(radius: 18)
+        .onHover { hover = $0 }
+        .padding(10)
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+@MainActor final class CaptureToast {
+    private var panel: NSPanel?
+    private var hideWork: DispatchWorkItem?
+    private var hovering = false
+
+    func show(url: URL, title: String, isVideo: Bool) {
+        let screen = screenUnderMouse() ?? NSScreen.main
+        if isVideo {
+            // Videonun ilk karesi
+            present(url: url, title: title, isVideo: true, image: nil, on: screen)
+            Task { @MainActor in
+                let gen = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+                gen.appliesPreferredTrackTransform = true
+                gen.maximumSize = CGSize(width: 512, height: 512)
+                if let frame = try? await gen.image(at: CMTime(seconds: 0.1, preferredTimescale: 600)) {
+                    let cg = frame.image
+                    let img = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+                    self.present(url: url, title: title, isVideo: true, image: img, on: screen, keepTimer: true)
+                }
+            }
+        } else {
+            present(url: url, title: title, isVideo: false, image: NSImage(contentsOf: url), on: screen)
+        }
+    }
+
+    private func present(url: URL, title: String, isVideo: Bool, image: NSImage?, on screen: NSScreen?, keepTimer: Bool = false) {
+        guard let screen else { return }
+        let p = panel ?? makePanel()
+        panel = p
+        let view = CaptureToastView(
+            image: image, title: title, fileName: url.lastPathComponent, isVideo: isVideo,
+            onOpen: { [weak self] in
+                MainActor.assumeIsolated {
+                    // Klasörü aç ve dosyayı seçili göster
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                    self?.hide()
+                }
+            },
+            onClose: { [weak self] in MainActor.assumeIsolated { self?.hide() } })
+        let host = GlassHostingView(rootView: view)
+        p.contentView = host
+        let size = host.fittingSize
+        let f = screen.visibleFrame
+        p.setFrame(NSRect(x: f.maxX - size.width - 6, y: f.minY + 6, width: size.width, height: size.height), display: true)
+        p.alphaValue = 1
+        p.orderFrontRegardless()
+
+        if !keepTimer { scheduleHide(after: 6) }
+    }
+
+    private func scheduleHide(after seconds: Double) {
+        hideWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, let p = self.panel else { return }
+                // Fare üstündeyse bekle
+                if p.frame.contains(NSEvent.mouseLocation) { self.scheduleHide(after: 2); return }
+                NSAnimationContext.runAnimationGroup({ ctx in
+                    ctx.duration = 0.3
+                    p.animator().alphaValue = 0
+                }, completionHandler: {
+                    MainActor.assumeIsolated {
+                        if p.alphaValue == 0 { p.orderOut(nil) }
+                    }
+                })
+            }
+        }
+        hideWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
+    }
+
+    func hide() {
+        hideWork?.cancel()
+        panel?.orderOut(nil)
+    }
+
+    private func makePanel() -> NSPanel {
+        let p = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 360, height: 120),
+                        styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        p.isOpaque = false
+        p.backgroundColor = .clear
+        p.hasShadow = true
+        p.level = .statusBar
+        p.isReleasedWhenClosed = false
+        p.animationBehavior = .none
+        p.sharingType = .none          // sonraki çekimlere girmez
+        p.appearance = NSAppearance(named: .darkAqua)
+        p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
+        return p
     }
 }
