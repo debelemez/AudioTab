@@ -32,7 +32,7 @@ final class SettingsModel: ObservableObject {
     /// ⌘⇧3/4/5/6 veya ⌘< açılıp kapandı → macOS kısayollarını güncelle
     var onShortcutsChanged: () -> Void = {}
     /// Güncellemeyi yükle (kayıt sürüyorsa önce bitirilir)
-    var onInstallUpdate: () -> Void = {}
+    var onInstallUpdate: (ReleaseInfo?) -> Void = { _ in }
 
     init(store: DeviceStore) { self.store = store }
 
@@ -119,12 +119,14 @@ struct SettingsView: View {
     @ObservedObject var store: DeviceStore
     @ObservedObject var updater: Updater
     @State private var tab = 0
+    @State private var confirmRelease: ReleaseInfo?
 
     private let tabs = [(L("Ses"), "speaker.wave.2.fill"),
                         (L("Pencereler"), "rectangle.on.rectangle"),
                         (L("Ekran"), "camera.viewfinder"),
                         (L("İzinler"), "lock.shield.fill"),
-                        (L("Genel"), "gearshape.fill")]
+                        (L("Genel"), "gearshape.fill"),
+                        (L("Sürümler"), "clock.arrow.circlepath")]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -133,7 +135,7 @@ struct SettingsView: View {
                     Button { tab = i } label: {
                         Label(tabs[i].0, systemImage: tabs[i].1)
                             .font(.system(size: 13, weight: .semibold))
-                            .padding(.horizontal, 14)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .background(Capsule().fill(.white.opacity(tab == i ? 0.20 : 0)))
                             .overlay(Capsule().strokeBorder(.white.opacity(tab == i ? 0.30 : 0), lineWidth: 1))
@@ -155,7 +157,8 @@ struct SettingsView: View {
                     case 1: windowsTab
                     case 2: screenTab
                     case 3: permissionsTab
-                    default: generalTab
+                    case 4: generalTab
+                    default: versionsTab
                     }
                 }
                 .padding(.horizontal, 22)
@@ -173,6 +176,16 @@ struct SettingsView: View {
         )
         .foregroundStyle(Color.white)
         .environment(\.colorScheme, .dark)
+        .alert(L("AudioTab %@ yüklensin mi?", confirmRelease?.version ?? ""),
+               isPresented: Binding(get: { confirmRelease != nil }, set: { if !$0 { confirmRelease = nil } })) {
+            Button(L("Yükle ve yeniden aç")) {
+                if let r = confirmRelease { model.onInstallUpdate(r) }
+                confirmRelease = nil
+            }
+            Button(L("Vazgeç"), role: .cancel) { confirmRelease = nil }
+        } message: {
+            Text(confirmMessage)
+        }
     }
 
     // MARK: Ses
@@ -660,7 +673,7 @@ struct SettingsView: View {
                         .foregroundStyle(status.2)
                         .lineLimit(2)
                     if updater.updateAvailable {
-                        Button(L("Yükle ve yeniden aç")) { model.onInstallUpdate() }
+                        Button(L("Yükle ve yeniden aç")) { model.onInstallUpdate(nil) }
                             .keyboardShortcut(.defaultAction)
                     } else {
                         Button(L("Şimdi denetle")) { updater.check(userInitiated: true) }
@@ -692,6 +705,120 @@ struct SettingsView: View {
                     .font(.system(size: 11.5, weight: .medium))
             }
         }
+    }
+
+    // MARK: Sürümler
+
+    private struct VersionRow: Identifiable {
+        let version: String
+        let lines: [String]
+        let release: ReleaseInfo?
+        let preGitHub: Bool
+        var id: String { version }
+    }
+
+    /// Uygulamadaki sürüm geçmişi + GitHub'daki sürümler (geçmişte olmayan daha yeni sürümler notlarıyla)
+    private var versionRows: [VersionRow] {
+        let byVersion = Dictionary(updater.releases.map { ($0.version, $0) }, uniquingKeysWith: { a, _ in a })
+        var rows = Changelog.entries.map {
+            VersionRow(version: $0.version, lines: $0.lines, release: byVersion[$0.version], preGitHub: $0.preGitHub)
+        }
+        let known = Set(rows.map(\.version))
+        for r in updater.releases where !known.contains(r.version) {
+            let lines = r.notes.split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "*-# ")) }
+                .filter { !$0.isEmpty }
+                .prefix(8)
+            rows.append(VersionRow(version: r.version, lines: Array(lines), release: r, preGitHub: false))
+        }
+        return rows.sorted { Updater.isNewer($0.version, than: $1.version) }
+    }
+
+    private var confirmMessage: String {
+        guard let r = confirmRelease else { return "" }
+        if Updater.isNewer(r.version, than: updater.currentVersion) {
+            return L("Ayarların ve izinlerin korunur.")
+        }
+        var msg = L("Eski bir sürüme dönüyorsun. Ayarların ve izinlerin korunur. Otomatik denetim açıksa AudioTab yeni sürüm olduğunu yine haber verir; istersen Genel'den kapatabilirsin.")
+        if Updater.isNewer("2.3.0", than: r.version) { msg += "\n\n" + L("Bu sürümün arayüzü sadece Türkçe.") }
+        if Updater.isNewer("2.3.1", than: r.version) { msg += "\n\n" + L("Bu sürüm 2.3.1 güvenlik iyileştirmelerini içermez.") }
+        return msg
+    }
+
+    private var installBusy: Bool { updater.state == .downloading || updater.state == .installing }
+
+    @ViewBuilder private var versionsTab: some View {
+        Card(title: L("Sürümler"), icon: "clock.arrow.circlepath") {
+            HStack(spacing: 10) {
+                Text(L("Şu an %@ kullanıyorsun. Bir sürümü seçip ona geçebilirsin; ayarların ve izinlerin korunur.", updater.currentVersion))
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.white.opacity(0.65))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if updater.releasesLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button { updater.fetchReleases() } label: { Label(L("Yenile"), systemImage: "arrow.clockwise") }
+                }
+            }
+            if let err = updater.releasesError {
+                Label(L("Sürüm listesi alınamadı: %@", err), systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11.5)).foregroundStyle(.orange)
+            }
+            switch updater.state {
+            case .downloading, .installing, .failed:
+                let s = updateStatus
+                Label(s.0, systemImage: s.1).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.2)
+            default: EmptyView()
+            }
+        }
+        .onAppear { if updater.releases.isEmpty { updater.fetchReleases() } }
+
+        ForEach(versionRows) { row in
+            versionCard(row)
+        }
+    }
+
+    @ViewBuilder private func versionCard(_ row: VersionRow) -> some View {
+        let isCurrent = row.version == updater.currentVersion
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text("AudioTab \(row.version)").font(.system(size: 14, weight: .bold))
+                if let d = row.release?.date {
+                    Text(d.formatted(date: .abbreviated, time: .omitted))
+                        .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
+                }
+                if isCurrent {
+                    Text(L("Kullanılan"))
+                        .font(.system(size: 10.5, weight: .bold))
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Capsule().fill(Color.green.opacity(0.3)))
+                }
+                Spacer()
+                if row.preGitHub {
+                    Text(L("GitHub öncesi")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.45))
+                } else if let r = row.release, !isCurrent {
+                    let newer = Updater.isNewer(r.version, than: updater.currentVersion)
+                    Button(newer ? L("Yükle") : L("Bu sürüme dön")) { confirmRelease = r }
+                        .disabled(installBusy)
+                }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(row.lines.enumerated()), id: \.offset) { _, line in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("•").foregroundStyle(.white.opacity(0.45))
+                        Text(line).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(.white.opacity(0.78))
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(.white.opacity(isCurrent ? 0.10 : 0.06)))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .strokeBorder(isCurrent ? Color.green.opacity(0.45) : .white.opacity(0.12), lineWidth: 1))
     }
 
     // MARK: Genel

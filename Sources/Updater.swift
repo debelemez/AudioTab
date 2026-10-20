@@ -19,11 +19,13 @@ enum UpdateConfig {
     static let allowedDownloadHosts: Set<String> = ["github.com", "objects.githubusercontent.com"]
 }
 
-struct ReleaseInfo {
+struct ReleaseInfo: Identifiable {
     let version: String
     let notes: String
     let zipURL: URL
     let page: URL
+    var date: Date? = nil
+    var id: String { version }
 }
 
 final class Updater: ObservableObject {
@@ -36,6 +38,10 @@ final class Updater: ObservableObject {
     @Published private(set) var state: State = .idle
     @Published private(set) var latest: ReleaseInfo?
     @Published private(set) var lastCheck: Date?
+    /// GitHub'da yayınlanmış tüm sürümler (Sürümler sekmesi için; yeniden eskiye)
+    @Published private(set) var releases: [ReleaseInfo] = []
+    @Published private(set) var releasesError: String?
+    @Published private(set) var releasesLoading = false
 
     /// Yeni sürüm bulununca (otomatik denetimde, her sürüm için bir kez)
     var onAvailable: ((ReleaseInfo) -> Void)?
@@ -175,6 +181,52 @@ final class Updater: ObservableObject {
         URL(string: "https://github.com/\(UpdateConfig.repo)/releases/download/\(tag)/AudioTab.zip")!
     }
 
+    /// Tüm yayınlanmış sürümleri getir (taslak / ön sürüm hariç)
+    func fetchReleases() {
+        if releasesLoading { return }
+        releasesLoading = true
+        releasesError = nil
+        Task {
+            do {
+                let list = try await Self.fetchAllReleases()
+                DispatchQueue.main.async { self.releases = list; self.releasesLoading = false }
+            } catch {
+                DispatchQueue.main.async { self.releasesError = error.localizedDescription; self.releasesLoading = false }
+            }
+        }
+    }
+
+    private static func fetchAllReleases() async throws -> [ReleaseInfo] {
+        guard let url = URL(string: "https://api.github.com/repos/\(UpdateConfig.repo)/releases?per_page=100") else {
+            throw UpdateError.message(L("Repo adresi geçersiz"))
+        }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        req.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        req.setValue("AudioTab-Updater", forHTTPHeaderField: "User-Agent")
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200, let arr = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else {
+            let msg = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["message"] as? String ?? "HTTP \(status)"
+            throw UpdateError.message("GitHub: \(msg)")
+        }
+        let iso = ISO8601DateFormatter()
+        return arr.compactMap { r -> ReleaseInfo? in
+            guard (r["draft"] as? Bool) != true, (r["prerelease"] as? Bool) != true,
+                  let tag = r["tag_name"] as? String else { return nil }
+            let assets = r["assets"] as? [[String: Any]] ?? []
+            guard let asset = assets.first(where: { ($0["name"] as? String) == "AudioTab.zip" }) else { return nil }
+            let dl = (asset["browser_download_url"] as? String).flatMap(URL.init(string:))
+                .flatMap { u in u.scheme == "https" && UpdateConfig.allowedDownloadHosts.contains(u.host ?? "") ? u : nil }
+                ?? downloadURL(tag: tag)
+            let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+            let page = (r["html_url"] as? String).flatMap(URL.init(string:)) ?? UpdateConfig.releasesPage
+            let date = (r["published_at"] as? String).flatMap { iso.date(from: $0) }
+            return ReleaseInfo(version: version, notes: r["body"] as? String ?? "", zipURL: dl, page: page, date: date)
+        }
+        .sorted { isNewer($0.version, than: $1.version) }
+    }
+
     /// "2.10.0" > "2.9.3"
     static func isNewer(_ a: String, than b: String) -> Bool {
         let pa = a.split(separator: ".").map { Int($0.filter(\.isNumber)) ?? 0 }
@@ -189,9 +241,12 @@ final class Updater: ObservableObject {
     // MARK: Yükle
 
     /// İndir → aç → imzayı doğrula → mevcut uygulamanın yerine koy → yeniden aç.
+    /// release: Sürümler sekmesinden kullanıcının seçtiği sürüm (eski sürüme dönüş dahil).
+    ///          nil ise en son sürüm; o zaman yalnızca daha yeni sürüm kurulur.
     /// beforeRelaunch: uygulama kapanmadan önce (ör. kayıt sürüyorsa bitir) çağrılır.
-    func install(beforeRelaunch: @escaping (@escaping () -> Void) -> Void = { $0() }) {
-        guard let info = latest, state != .downloading, state != .installing else { return }
+    func install(release: ReleaseInfo? = nil, beforeRelaunch: @escaping (@escaping () -> Void) -> Void = { $0() }) {
+        guard let info = release ?? latest, state != .downloading, state != .installing else { return }
+        let userChoseVersion = release != nil
         set(.downloading)
         Task {
             do {
@@ -211,9 +266,12 @@ final class Updater: ObservableObject {
                 let newApp = work.appendingPathComponent("AudioTab.app")
                 guard fm.fileExists(atPath: newApp.path) else { throw UpdateError.message(L("Paket içinde AudioTab.app yok")) }
                 try Self.verify(newApp)
-                // İmzalı paketin içindeki sürüm, yayındaki sürümle aynı ve bizden yeni olmalı (geri sürüm yok)
+                // İmzalı paketin içindeki sürüm, yayındaki sürümle aynı olmalı. Eski sürüme yalnızca
+                // kullanıcı Sürümler sekmesinden kendisi seçtiyse dönülür; otomatik güncelleme hep ileri gider.
                 let newVersion = Bundle(url: newApp)?.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-                guard newVersion == info.version, Self.isNewer(newVersion, than: self.currentVersion) else {
+                let directionOK = userChoseVersion ? newVersion != self.currentVersion
+                                                   : Self.isNewer(newVersion, than: self.currentVersion)
+                guard newVersion == info.version, directionOK else {
                     throw UpdateError.message(L("Paketteki sürüm (%@) beklenenle uyuşmuyor", newVersion))
                 }
                 _ = try? Self.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])

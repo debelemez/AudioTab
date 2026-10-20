@@ -51,7 +51,7 @@ import ServiceManagement
             if !model.anyPreviews { self.switcher.clearThumbs() }
         }
         model.onShortcutsChanged = { [weak self] in self?.applyExtraNative() }
-        model.onInstallUpdate = { [weak self] in self?.installUpdate() }
+        model.onInstallUpdate = { [weak self] release in self?.installUpdate(release) }
         settings = SettingsWindowController(model: model)
 
         // Ekran çekimi ve ekran bölme
@@ -281,8 +281,8 @@ import ServiceManagement
     @objc private func installUpdateFromMenu() { installUpdate() }
 
     /// Kayıt sürüyorsa önce dosyayı bitir, sonra güncelle ve yeniden aç
-    private func installUpdate() {
-        Updater.shared.install { [weak self] relaunch in
+    private func installUpdate(_ release: ReleaseInfo? = nil) {
+        Updater.shared.install(release: release) { [weak self] relaunch in
             MainActor.assumeIsolated {
                 guard let self, self.capture.isRecording else { relaunch(); return }
                 self.capture.stopRecording { relaunch() }
