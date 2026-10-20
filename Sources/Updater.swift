@@ -9,7 +9,7 @@ import Security
 
 enum UpdateConfig {
     /// "kullanıcı/repo"
-    static let repo = "__GITHUB_REPO__"
+    static let repo = "debelemez/AudioTab"
     static var releasesPage: URL { URL(string: "https://github.com/\(repo)/releases")! }
 }
 

@@ -1,25 +1,42 @@
 name: Release
 
-# "v2.3.0" gibi bir etiket gönderilince: Mac'te derle, imzala, GitHub Releases'e AudioTab.zip koy.
-# Uygulamanın içindeki güncelleyici bu sürümü bulup kendini günceller.
+# main'e her gönderimde Mac'te derler (derleme hatası varsa burada görünür).
+# VERSION dosyasındaki sürüm henüz yayınlanmadıysa ve imza sertifikası tanımlıysa:
+# imzalar ve GitHub Releases'e AudioTab.zip olarak yayınlar. Uygulamadaki güncelleyici bunu bulur.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-15
     env:
       HAS_CERT: ${{ secrets.CERT_P12 != '' }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Sürüm
+        id: ver
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: İmza sertifikasını yükle
         if: env.HAS_CERT == 'true'
@@ -27,15 +44,15 @@ jobs:
           CERT_P12: ${{ secrets.CERT_P12 }}
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
         run: |
-          echo "$CERT_P12" | base64 --decode > cert.p12
+          echo "$CERT_P12" | tr -d '[:space:]' | base64 --decode > cert.p12
           security create-keychain -p ci build.keychain
           security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
           security default-keychain -s build.keychain
           security unlock-keychain -p ci build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
-          security import cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security import cert.p12 -k build.keychain -P "$(echo -n "$CERT_PASSWORD" | tr -d '[:space:]')" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k ci build.keychain
-          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain signing/AudioTab.cer || true
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain signing/AudioTab.pem || true
           rm cert.p12
           IDENTITY=$(security find-identity -p codesigning build.keychain | awk '/AudioTab/ {print $2; exit}')
           if [ -z "$IDENTITY" ]; then
@@ -46,8 +63,8 @@ jobs:
 
       - name: Derle
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$(cat VERSION)"; fi
-          ./build.sh --universal --version "$VERSION"
+          chmod +x build.sh
+          ./build.sh --universal --version "${{ steps.ver.outputs.version }}"
           codesign -dv --verbose=2 AudioTab.app 2>&1 | grep -E "Identifier|Authority|Signature" || true
 
       - name: Paketle
@@ -60,8 +77,11 @@ jobs:
           path: AudioTab.zip
 
       - name: Sürümü yayınla
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.HAS_CERT == 'true' && steps.ver.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: AudioTab ${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
           files: AudioTab.zip
           generate_release_notes: true

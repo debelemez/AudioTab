@@ -1,8 +1,8 @@
 #!/bin/bash
 # AudioTab'ı GitHub'daki son sürümden kur (derlemeye gerek yok):
-#   curl -fsSL https://raw.githubusercontent.com/__GITHUB_REPO__/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/debelemez/AudioTab/main/install.sh | bash
 set -euo pipefail
-REPO="__GITHUB_REPO__"
+REPO="debelemez/AudioTab"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 

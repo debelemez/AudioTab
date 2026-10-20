@@ -7,7 +7,7 @@ GlassTab + AudioHop + ScreenHub tek uygulamada: glassmorphism **⌘Tab / ⌥Tab 
 Derlemeye gerek yok, son sürümü GitHub'dan kur:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/__GITHUB_REPO__/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/debelemez/AudioTab/main/install.sh | bash
 ```
 
 Bundan sonra güncellemeler uygulamanın içinden gelir: yeni sürüm çıkınca menüde **Güncelleme var · Yükle** görünür (Ayarlar › Genel › Güncellemeler'den de denetlenebilir). Uygulama indirir, imzayı doğrular, kendini değiştirir ve yeniden açılır. Ayarlar ve izinler korunur.
@@ -18,28 +18,20 @@ Kaynaktan derlemek istersen (Xcode veya Command Line Tools gerekir):
 ./build.sh --install
 ```
 
-## İlk yayın (bir kere)
-
-```bash
-./publish.sh
-```
-
-GitHub'a giriş yaptırır, repoyu açar ve kodu yükler. İmza sertifikasını gizli değişken olarak ekler, ilk sürümü yayınlar, derlemenin bitmesini bekler ve istersen kurar.
-
 ## Yeni sürüm yayınlamak
+
+`VERSION` dosyasındaki numarayı artır (ör. `2.3.0`) ve main'e gönder:
 
 ```bash
 echo 2.3.0 > VERSION
-git commit -am "2.3.0"
-git tag v2.3.0
-git push && git push --tags
+git commit -am "2.3.0" && git push
 ```
 
 GitHub Actions Mac'te derler (Apple Silicon + Intel), imzalar ve **Releases**'e `AudioTab.zip` koyar. Uygulamalar 6 saat içinde (ya da "Şimdi denetle" ile hemen) yeni sürümü görür.
 
-İmza: Sürümler hep aynı sertifikayla imzalanır (`signing/AudioTab.cer`, özel anahtar repo gizli değişkenlerinde: `CERT_P12`, `CERT_PASSWORD`). macOS izinleri imzaya bağlı olduğu için **güncellemelerden sonra Erişilebilirlik / Ekran Kaydı iznini yeniden vermen gerekmez**. Güncelleyici de sadece bu sertifikayla imzalanmış sürümleri yükler.
+İmza: Sürümler hep aynı sertifikayla imzalanır (`signing/AudioTab.pem`, özel anahtar repo gizli değişkenlerinde: `CERT_P12`, `CERT_PASSWORD`). macOS izinleri imzaya bağlı olduğu için **güncellemelerden sonra Erişilebilirlik / Ekran Kaydı iznini yeniden vermen gerekmez**. Güncelleyici de sadece bu sertifikayla imzalanmış sürümleri yükler.
 
-Betik eski GlassTab ve AudioHop'u kapatır. Ardından `/Applications`'daki **GlassTab.app** ve **AudioHop.app**'i çöpe at; girişte açılıp kısayolları kapmasınlar.
+Kurulum eski GlassTab ve AudioHop'u kapatır. Ardından `/Applications`'daki **GlassTab.app** ve **AudioHop.app**'i çöpe at; girişte açılıp kısayolları kapmasınlar.
 
 Eski iki uygulamanın ayarları (⌘Tab profilleri, hatırlanan ses cihazları, döngü seçimleri…) ilk açılışta otomatik taşınır.
 
