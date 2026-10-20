@@ -36,10 +36,10 @@ struct TileLayout: Identifiable {
     }
 
     static let all: [TileLayout] = [
-        TileLayout(id: "full", name: "Tam ekran", zones: [r(0, 0, 1, 1)]),
-        TileLayout(id: "2v", name: "2 dikey", zones: [r(0, 0, 0.5, 1), r(0.5, 0, 0.5, 1)]),
-        TileLayout(id: "2h", name: "2 yatay", zones: [r(0, 0, 1, 0.5), r(0, 0.5, 1, 0.5)]),
-        TileLayout(id: "3v", name: "3 dikey", zones: [r(0, 0, 1.0 / 3, 1), r(1.0 / 3, 0, 1.0 / 3, 1), r(2.0 / 3, 0, 1.0 / 3, 1)]),
+        TileLayout(id: "full", name: L("Tam ekran"), zones: [r(0, 0, 1, 1)]),
+        TileLayout(id: "2v", name: L("2 dikey"), zones: [r(0, 0, 0.5, 1), r(0.5, 0, 0.5, 1)]),
+        TileLayout(id: "2h", name: L("2 yatay"), zones: [r(0, 0, 1, 0.5), r(0, 0.5, 1, 0.5)]),
+        TileLayout(id: "3v", name: L("3 dikey"), zones: [r(0, 0, 1.0 / 3, 1), r(1.0 / 3, 0, 1.0 / 3, 1), r(2.0 / 3, 0, 1.0 / 3, 1)]),
         TileLayout(id: "13", name: "⅓ + ⅔", zones: [r(0, 0, 1.0 / 3, 1), r(1.0 / 3, 0, 2.0 / 3, 1)]),
         TileLayout(id: "23", name: "⅔ + ⅓", zones: [r(0, 0, 2.0 / 3, 1), r(2.0 / 3, 0, 1.0 / 3, 1)]),
         TileLayout(id: "1+2", name: "½ + ¼ ¼", zones: [r(0, 0, 0.5, 1), r(0.5, 0, 0.5, 0.5), r(0.5, 0.5, 0.5, 0.5)]),
@@ -180,7 +180,7 @@ struct MonitorBadgeView: View {
             Text("\(number)")
                 .font(.system(size: 64, weight: .bold, design: .rounded))
             Text(name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-            Text(active ? "Hedef monitör" : size)
+            Text(active ? L("Hedef monitör") : size)
                 .font(.system(size: 11, weight: active ? .semibold : .regular))
                 .foregroundStyle(active ? Color.accentColor : .white.opacity(0.6))
         }
@@ -263,7 +263,7 @@ struct MonitorPicker: View {
                         Text("\(i + 1)").font(.system(size: 13, weight: .bold, design: .rounded))
                         VStack(alignment: .leading, spacing: 0) {
                             Text(screens[i].localizedName).font(.system(size: 11, weight: .semibold)).lineLimit(1)
-                            Text(i == here ? "buradasın" : Screens.size(screens[i]))
+                            Text(i == here ? L("buradasın") : Screens.size(screens[i]))
                                 .font(.system(size: 9.5)).foregroundStyle(.white.opacity(0.6))
                         }
                     }
@@ -511,7 +511,7 @@ struct TilingView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
-                Label("Ekranı Böl", systemImage: "rectangle.split.3x1")
+                Label(L("Ekranı Böl"), systemImage: "rectangle.split.3x1")
                     .font(.system(size: 16, weight: .bold))
                 Spacer()
                 if model.screens.count > 1 {
@@ -539,9 +539,9 @@ struct TilingView: View {
 
     private var hint: String {
         switch model.step {
-        case .monitor: return "1–9 monitör seç · ← → değiştir · ↩ devam · Esc kapat"
-        case .layout: return "1–9 düzen seç · oklar gezin · ↩ seç · Tab / ⌘< monitör değiştir · Esc kapat"
-        case .assign: return "↑↓ pencere · ↩ veya tıkla bu bölmeye koy · Space bölmeyi boş bırak · ⌫ temizle · ⌘↩ uygula · ← geri · Esc düzenlere dön"
+        case .monitor: return L("1–9 monitör seç · ← → değiştir · ↩ devam · Esc kapat")
+        case .layout: return L("1–9 düzen seç · oklar gezin · ↩ seç · Tab / ⌘< monitör değiştir · Esc kapat")
+        case .assign: return L("↑↓ pencere · ↩ veya tıkla bu bölmeye koy · Space bölmeyi boş bırak · ⌫ temizle · ⌘↩ uygula · ← geri · Esc düzenlere dön")
         }
     }
 
@@ -549,7 +549,7 @@ struct TilingView: View {
 
     private var monitorStep: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Hangi monitörde?").font(.system(size: 14, weight: .semibold))
+            Text(L("Hangi monitörde?")).font(.system(size: 14, weight: .semibold))
             HStack(spacing: 14) {
                 ForEach(model.screens.indices, id: \.self) { i in
                     let s = model.screens[i]
@@ -558,7 +558,7 @@ struct TilingView: View {
                         Text(s.localizedName).font(.system(size: 13, weight: .semibold)).lineLimit(1)
                         Text(Screens.size(s)).font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
                         if i == model.here {
-                            Text("Buradasın").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Color.accentColor)
+                            Text(L("Buradasın")).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Color.accentColor)
                         }
                     }
                     .padding(18)
@@ -576,7 +576,7 @@ struct TilingView: View {
 
     private var layoutStep: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Ekranı kaça bölelim?").font(.system(size: 14, weight: .semibold))
+            Text(L("Ekranı kaça bölelim?")).font(.system(size: 14, weight: .semibold))
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
                 ForEach(TileLayout.all.indices, id: \.self) { i in
                     let l = TileLayout.all[i]
@@ -617,16 +617,16 @@ struct TilingView: View {
 
         return HStack(alignment: .top, spacing: 18) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Bölme \(model.zone + 1) / \(layout.zones.count): hangi pencere?")
+                Text(L("Bölme %@ / %@: hangi pencere?", "\(model.zone + 1)", "\(layout.zones.count)"))
                     .font(.system(size: 14, weight: .semibold))
                 LayoutShape(layout: layout, active: model.zone, labels: labels, icons: icons) { controller.selectZone($0) }
                     .aspectRatio(model.aspect, contentMode: .fit)
                     .frame(width: 380, height: 250)
                 HStack(spacing: 8) {
-                    Button("Boş bırak") { controller.skipZone() }
-                    Button("Düzenlere dön") { model.step = .layout }
+                    Button(L("Boş bırak")) { controller.skipZone() }
+                    Button(L("Düzenlere dön")) { model.step = .layout }
                     Spacer()
-                    Button("Uygula") { controller.apply() }
+                    Button(L("Uygula")) { controller.apply() }
                         .keyboardShortcut(.defaultAction)
                         .disabled(model.assignments.isEmpty)
                 }
@@ -637,7 +637,7 @@ struct TilingView: View {
                 ScrollView {
                     VStack(spacing: 4) {
                         if model.items.isEmpty {
-                            Text("Taşınabilir pencere yok").foregroundStyle(.white.opacity(0.5)).padding()
+                            Text(L("Taşınabilir pencere yok")).foregroundStyle(.white.opacity(0.5)).padding()
                         }
                         ForEach(model.items.indices, id: \.self) { i in
                             TileWindowRow(item: model.items[i], number: i + 1,
@@ -675,7 +675,7 @@ struct TileWindowRow: View {
             }
             Spacer(minLength: 6)
             if let zone {
-                Text("Bölme \(zone + 1)")
+                Text(L("Bölme %@", "\(zone + 1)"))
                     .font(.system(size: 10.5, weight: .bold))
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background(Capsule().fill(Color.accentColor.opacity(0.8)))
@@ -835,7 +835,7 @@ struct ZonePickerView: View {
                 }
                 VStack(alignment: .leading, spacing: 1) {
                     Text(model.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                    Text("Ekranın hangi bölmesine?").font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
+                    Text(L("Ekranın hangi bölmesine?")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
                 }
                 Spacer(minLength: 10)
                 if model.screens.count > 1 {
@@ -857,7 +857,7 @@ struct ZonePickerView: View {
                 }
             }
 
-            Text("Bir bölmeye tıkla · Tab / ← → monitör · Esc kapat")
+            Text(L("Bir bölmeye tıkla · Tab / ← → monitör · Esc kapat"))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
         }

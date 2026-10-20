@@ -68,7 +68,7 @@ import ServiceManagement
 
         // GitHub'dan güncelleme
         Updater.shared.onAvailable = { [weak self] info in
-            self?.hud.show(name: "AudioTab \(info.version) hazır · menüden yükle", symbol: "arrow.down.circle.fill")
+            self?.hud.show(name: L("AudioTab %@ hazır · menüden yükle", info.version), symbol: "arrow.down.circle.fill")
         }
         Updater.shared.start()
 
@@ -164,12 +164,12 @@ import ServiceManagement
         let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
         let symbol = store.current?.symbol ?? "speaker.wave.2"
         if capture?.isRecording == true {
-            let rec = NSImage(systemSymbolName: "record.circle.fill", accessibilityDescription: "Kaydediliyor")?
+            let rec = NSImage(systemSymbolName: "record.circle.fill", accessibilityDescription: L("Kaydediliyor"))?
                 .withSymbolConfiguration(config)
             rec?.isTemplate = true
             statusItem.button?.image = rec
             statusItem.button?.contentTintColor = .systemRed
-            statusItem.button?.toolTip = "AudioTab · Kaydediliyor"
+            statusItem.button?.toolTip = L("AudioTab · Kaydediliyor")
             return
         }
         statusItem.button?.contentTintColor = nil
@@ -189,14 +189,14 @@ import ServiceManagement
 
         let up = Updater.shared
         if up.updateAvailable, let v = up.latest?.version {
-            menu.addItem(action("Güncelleme var: \(v) · Yükle", "arrow.down.circle.fill", #selector(installUpdateFromMenu)))
+            menu.addItem(action(L("Güncelleme var: %@ · Yükle", v), "arrow.down.circle.fill", #selector(installUpdateFromMenu)))
             menu.addItem(.separator())
         } else if up.state == .downloading || up.state == .installing {
-            menu.addItem(header("Güncelleme yükleniyor…"))
+            menu.addItem(header(L("Güncelleme yükleniyor…")))
             menu.addItem(.separator())
         }
-        menu.addItem(header("Çıkış: \(store.current?.name ?? "—")"))
-        if store.passthroughActive { menu.addItem(header("eqMac üzerinden yönlendiriliyor")) }
+        menu.addItem(header(L("Çıkış: %@", store.current?.name ?? "—")))
+        if store.passthroughActive { menu.addItem(header(L("eqMac üzerinden yönlendiriliyor"))) }
         menu.addItem(.separator())
 
         for row in store.rows where row.isConnected {
@@ -210,17 +210,17 @@ import ServiceManagement
         menu.addItem(.separator())
 
         if capture.isRecording {
-            let stop = NSMenuItem(title: "Kaydı durdur", action: #selector(stopRecording), keyEquivalent: "")
+            let stop = NSMenuItem(title: L("Kaydı durdur"), action: #selector(stopRecording), keyEquivalent: "")
             stop.target = self
             stop.image = NSImage(systemSymbolName: "stop.circle.fill", accessibilityDescription: nil)
             menu.addItem(stop)
             menu.addItem(.separator())
         }
         if TileSettings.enabled {
-            menu.addItem(action("Ekranı böl…  ⌘<", "rectangle.split.3x1", #selector(openTiling)))
+            menu.addItem(action(L("Ekranı böl…  ⌘<"), "rectangle.split.3x1", #selector(openTiling)))
         }
         if CaptureSettings.enabled {
-            let cap = NSMenuItem(title: "Ekran görüntüsü ve kayıt", action: nil, keyEquivalent: "")
+            let cap = NSMenuItem(title: L("Ekran görüntüsü ve kayıt"), action: nil, keyEquivalent: "")
             cap.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: nil)
             let sub = NSMenu()
             for a in CaptureAction.allCases {
@@ -241,18 +241,18 @@ import ServiceManagement
         }
         if TileSettings.enabled || CaptureSettings.enabled { menu.addItem(.separator()) }
 
-        let prefs = NSMenuItem(title: "Ayarlar…", action: #selector(openSettings), keyEquivalent: ",")
+        let prefs = NSMenuItem(title: L("Ayarlar…"), action: #selector(openSettings), keyEquivalent: ",")
         prefs.target = self
         menu.addItem(prefs)
 
         if !AXIsProcessTrusted() {
-            let warn = NSMenuItem(title: "⚠︎ Erişilebilirlik izni ver…", action: #selector(openAX), keyEquivalent: "")
+            let warn = NSMenuItem(title: L("⚠︎ Erişilebilirlik izni ver…"), action: #selector(openAX), keyEquivalent: "")
             warn.target = self
             menu.addItem(warn)
         }
 
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "AudioTab'tan Çık", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L("AudioTab'tan Çık"), action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
     }

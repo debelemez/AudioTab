@@ -1208,10 +1208,10 @@ final class ItemCell: NSView {
         let hasDots = item.window != nil && !item.system
         let dotsW: CGFloat = hasDots ? Self.dotsWidth : 0
         let state: String
-        if item.system { state = "Sistem" }
-        else if item.window == nil { state = "Pencere yok" }
-        else if item.minimized { state = "Küçültülmüş" }
-        else if item.app.isHidden { state = "Gizli" }
+        if item.system { state = L("Sistem") }
+        else if item.window == nil { state = L("Pencere yok") }
+        else if item.minimized { state = L("Küçültülmüş") }
+        else if item.app.isHidden { state = L("Gizli") }
         else { state = "" }
 
         switch mode {
@@ -1314,8 +1314,8 @@ final class ItemCell: NSView {
     private func addDots(x: CGFloat, y: CGFloat) {
         let c = DotView(kind: .close, frame: NSRect(x: x, y: y, width: Self.dotSize, height: Self.dotSize))
         let t = DotView(kind: .tile, frame: NSRect(x: x + Self.dotSize + Self.dotGap, y: y, width: Self.dotSize, height: Self.dotSize))
-        c.toolTip = "Pencereyi kapat"
-        t.toolTip = "Ekranın bir bölmesine taşı"
+        c.toolTip = L("Pencereyi kapat")
+        t.toolTip = L("Ekranın bir bölmesine taşı")
         addSubview(c)
         addSubview(t)
         closeDot = c
@@ -1344,7 +1344,7 @@ final class ItemCell: NSView {
         v.layer?.cornerRadius = h / 2
         v.layer?.borderWidth = 0.5
         v.layer?.borderColor = NSColor.white.withAlphaComponent(0.25).cgColor
-        v.toolTip = "Ses: \(name)"
+        v.toolTip = L("Ses: %@", name)
 
         let img = NSImageView(frame: NSRect(x: 7, y: 4, width: 14, height: 14))
         img.image = NSImage(systemSymbolName: symbol, accessibilityDescription: name)?

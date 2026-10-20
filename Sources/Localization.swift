@@ -1,0 +1,284 @@
+import Foundation
+
+// MARK: - Dil (İngilizce varsayılan, Türkçe seçilebilir)
+//
+// Koddaki metinler Türkçe yazılır ve L("…") ile sarılır. Uygulama İngilizce çalışıyorsa
+// aşağıdaki sözlükten karşılığı alınır; sözlükte yoksa Türkçe metin gösterilir.
+// Dil açılışta bir kez okunur; değişince uygulama yeniden başlatılır (her yer aynı dilde olsun).
+
+enum AppLanguage: String, CaseIterable {
+    case en, tr
+
+    var title: String { self == .en ? "English" : "Türkçe" }
+
+    private static let key = "app.language"
+
+    /// Ayarlarda seçili dil (yeniden başlatınca geçerli olur)
+    static var selected: AppLanguage {
+        get { AppLanguage(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .en }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
+    }
+
+    /// Bu çalışmada kullanılan dil
+    static let active: AppLanguage = selected
+}
+
+func L(_ tr: String) -> String {
+    AppLanguage.active == .tr ? tr : (englishStrings[tr] ?? tr)
+}
+
+/// Biçimli metin: L("Sürüm %@", v)
+func L(_ tr: String, _ args: CVarArg...) -> String {
+    String(format: L(tr), arguments: args)
+}
+
+private let englishStrings: [String: String] = [
+    // Menü ve bildirimler
+    "AudioTab %@ hazır · menüden yükle": "AudioTab %@ is ready · install from the menu",
+    "Güncelleme var: %@ · Yükle": "Update available: %@ · Install",
+    "Güncelleme yükleniyor…": "Installing update…",
+    "Çıkış: %@": "Output: %@",
+    "eqMac üzerinden yönlendiriliyor": "Routed through eqMac",
+    "Kaydı durdur": "Stop Recording",
+    "Ekranı böl…  ⌘<": "Split Screen…  ⌘<",
+    "Ekran görüntüsü ve kayıt": "Screenshots & Recording",
+    "Ayarlar…": "Settings…",
+    "⚠︎ Erişilebilirlik izni ver…": "⚠︎ Grant Accessibility Permission…",
+    "AudioTab'tan Çık": "Quit AudioTab",
+    "Kaydediliyor": "Recording",
+    "AudioTab · Kaydediliyor": "AudioTab · Recording",
+
+    // Ekran çekimi
+    "Monitör bulunamadı": "Display not found",
+    "Video dosyası oluşturulamadı": "Couldn't create the video file",
+    "Seçilen alan çok küçük": "The selected area is too small",
+    "Bu monitör": "This Display",
+    "Alan": "Area",
+    "Kaydırmalı": "Scrolling",
+    "Monitörü kaydet": "Record Display",
+    "Alanı kaydet": "Record Area",
+    "Kapat (Esc)": "Close (Esc)",
+    "Ekran Kaydı izni gerekli (Ayarlar › İzinler)": "Screen Recording permission required (Settings › Permissions)",
+    "Ekran Görüntüsü": "Screenshot",
+    "Ekran görüntüsü": "Screenshot",
+    "Ekran Alıntısı": "Screenshot",
+    "Ekran alıntısı": "Screenshot",
+    "Kaydırmalı görüntü macOS 14 veya üstü ister": "Scrolling screenshots require macOS 14 or later",
+    "Kaydırılacak alanı seç (sayfanın içi) · Esc iptal": "Select the area to scroll (inside the page) · Esc to cancel",
+    "Kaydırmalı Görüntü": "Scrolling Screenshot",
+    "Kaydırmalı çekim… Esc ile bitir": "Scrolling capture… Esc to finish",
+    "Kaydırmalı görüntü": "Scrolling screenshot",
+    "Kaydırmalı görüntü alınamadı": "Couldn't take the scrolling screenshot",
+    "Kaydedilecek alanı seç · Esc iptal": "Select the area to record · Esc to cancel",
+    "Ekran Kaydı": "Screen Recording",
+    "Kayıt başlatılamadı: %@": "Couldn't start recording: %@",
+    "Ekran kaydı": "Screen recording",
+    "%@ kaydedilemedi": "%@ couldn't be saved",
+    "%@ kaydedildi": "%@ saved",
+    "Klasörde göster": "Show in Finder",
+    "Kapat": "Close",
+
+    // Ses paneli
+    "Ses Çıkışı": "Sound Output",
+    "%@ sonraki · ⌘ bırak / ↩ seç · esc": "%@ next · release ⌘ / ↩ select · esc",
+    "Şu an çalıyor": "Now playing",
+    "Bağlı değil · hatırlanıyor": "Not connected · remembered",
+    "Kısayol döngüsünde": "In shortcut cycle",
+    "Bağlı": "Connected",
+
+    // Ayarlar: genel yapı
+    "AudioTab Ayarları": "AudioTab Settings",
+    "Ses": "Sound",
+    "Pencereler": "Windows",
+    "Ekran": "Screen",
+    "İzinler": "Permissions",
+    "Genel": "General",
+
+    // Ayarlar: Ses
+    "Kısayol": "Shortcut",
+    "Tuş kombinasyonu": "Key combination",
+    "⌘ basılıyken ⇧'ye dokun. ⌘⇧4 gibi kısayolları bozmaz.": "Tap ⇧ while holding ⌘. Doesn't interfere with shortcuts like ⌘⇧4.",
+    "⌘ + Caps Lock": "⌘ + Caps Lock",
+    "%@ basınca": "When %@ is pressed",
+    "Sıradakine geç": "Switch to next",
+    "Listeyi göster": "Show list",
+    "⌘ bırakınca seç": "Select on ⌘ release",
+    "⌘+Tab gibi: ⌘'yi bırakınca vurgulu cihaz seçilir": "Like ⌘Tab: the highlighted device is selected when you release ⌘",
+    "Geçişte bildirim göster": "Show notification on switch",
+    "Ekranın altında küçük cam bildirim": "A small glass notification at the bottom of the screen",
+    "Caps Lock'u açık bırakma": "Don't leave Caps Lock on",
+    "⌘⇪ sonrası Caps Lock eski haline döner": "Caps Lock returns to its previous state after ⌘⇪",
+    "Ses cihazları": "Sound devices",
+    "Listede görünenler": "Shown in list",
+    "Tümü": "All",
+    "Seçtiklerim": "Selected",
+    "Cihaz": "Device",
+    "%@ döngüsü": "%@ cycle",
+    "Listede": "In list",
+    "Henüz cihaz yok": "No devices yet",
+    "Bu cihazı unut": "Forget this device",
+    "Döngüde 2'den az takılı cihaz var → kısayol tüm takılı cihazlar arasında geçer.": "Fewer than 2 connected devices in the cycle → the shortcut switches between all connected devices.",
+    "eqMac algılandı: ses eqMac üzerinden seçtiğin cihaza gidiyor.": "eqMac detected: audio goes through eqMac to the device you choose.",
+    "Uygulamaya göre ses cihazı": "Sound device per app",
+    "Uygulamaya geçince ses cihazını değiştir": "Switch sound device when switching apps",
+    "Atadığın uygulama öne gelince ses o cihaza geçer. ⌘Tab açıkken S ile de atayabilirsin.": "When an assigned app comes to the front, sound switches to its device. You can also assign with S while ⌘Tab is open.",
+    "Henüz atama yok.": "No assignments yet.",
+    "Atama yok": "No assignment",
+    "%@ (bağlı değil)": "%@ (not connected)",
+    "Atamayı kaldır": "Remove assignment",
+    "Açık bir uygulama ekle": "Add a running app",
+
+    // Ayarlar: Pencereler
+    "Kısayolu kullan": "Use shortcut",
+    "Kapatınca macOS'un kendi ⌘Tab'ı geri gelir": "Turning this off restores the macOS ⌘Tab",
+    "Görünüm": "View",
+    "Alt alta satırlar, ses listesi gibi": "Rows stacked vertically, like the sound list",
+    "Kartlar yan yana": "Cards side by side",
+    "Izgara": "Grid",
+    "Liste": "List",
+    "Pencere önizlemeleri": "Window previews",
+    "Liste görünümünde kullanılmaz": "Not used in list view",
+    "Ekran Kaydı izni gerekir (macOS 14+)": "Requires Screen Recording permission (macOS 14+)",
+    "Küçültülmüş pencereler": "Minimized windows",
+    "Küçültülmüş ve penceresiz uygulamaları da göster": "Also show minimized windows and apps without windows",
+    "Pencereleri her zaman bul": "Always find windows",
+    "Kapsam": "Scope",
+    "Diğer masaüstlerindeki, tam ekrandaki ve arkada kalan pencereleri de kesin gösterir (Chrome profilleri dahil). Arka planda, sadece masaüstü değişince ve uygulama açılınca güncellenir.": "Always shows windows on other Spaces, in full screen and behind others (including Chrome profiles). Updated in the background only when the Space changes or an app opens.",
+    "Kapalı": "Off",
+    "Tarayıcılar": "Browsers",
+    "Panelde kısayollar": "Panel shortcuts",
+    "İleri / geri": "Forward / back",
+    "Gezin": "Navigate",
+    "⌘'yi bırak, ↩, Space, tıkla": "Release ⌘, ↩, Space, click",
+    "Seçili pencereye geç": "Switch to the selected window",
+    "İptal": "Cancel",
+    "Kapat · Küçült · Gizle · Çık": "Close · Minimize · Hide · Quit",
+    "Uygulamanın ses cihazını değiştir": "Change the app's sound device",
+
+    // Ayarlar: Ekran
+    "Ekranı böl  ⌘<": "Split screen  ⌘<",
+    "⌘< → kaça bölüneceğini seç → hangi pencere hangi bölmeye. ⌘Tab kartlarındaki bölme düğmesi aynı işi tek pencere için yapar. Açıkken macOS'un ⌘< (aynı uygulamanın pencereleri arasında geçiş) kısayolu kapanır.": "⌘< → choose how to split → which window goes where. The split button on ⌘Tab cards does the same for one window. While on, the macOS ⌘< shortcut (cycle windows of the same app) is disabled.",
+    "Hedef monitör": "Target display",
+    "Birden fazla monitör varken. Panelde Tab ile her zaman değiştirebilirsin.": "With multiple displays. You can always change it with Tab in the panel.",
+    "Farenin olduğu": "Under the mouse",
+    "Her seferinde sor": "Ask every time",
+    "Pencere arası boşluk": "Gap between windows",
+    "Kullan": "Enable",
+    "Kapatınca hepsi devre dışı kalır ve macOS'un kendi ⌘⇧3 / ⌘⇧4 / ⌘⇧5 kısayolları geri gelir.": "Turning this off disables everything and restores the macOS ⌘⇧3 / ⌘⇧4 / ⌘⇧5 shortcuts.",
+    "Bu monitörün görüntüsü": "Screenshot of this display",
+    "Sadece farenin olduğu monitör": "Only the display under the mouse",
+    "Alan seç; Space ile pencere seçimi": "Select an area; Space to pick a window",
+    "Alanı seç, sayfa kendiliğinden kayar · Esc bitirir": "Select an area, the page scrolls by itself · Esc finishes",
+    "Ekran kaydı (MP4 · H.264)": "Screen recording (MP4 · H.264)",
+    "Çekim paleti; kayıt sırasında ⌘⇧5 durdurur": "Capture palette; ⌘⇧5 stops while recording",
+    "Hepsini tek klasöre kaydet…": "Save all to one folder…",
+    "Panoya da kopyala": "Also copy to clipboard",
+    "Görüntüler kaydedilirken panoya da alınır": "Images are also copied to the clipboard when saved",
+    "Deklanşör sesi": "Shutter sound",
+    "Video kaydı": "Video recording",
+    "Kare hızı": "Frame rate",
+    "Kalite": "Quality",
+    "Kayıpsıza yakın, dosya büyük": "Near-lossless, large files",
+    "Görüntü bozulmaz, dosya makul boyutta": "Crisp image, reasonable file size",
+    "Yüksek": "High",
+    "En yüksek": "Maximum",
+    "Sistem sesini kaydet": "Record system audio",
+    "Bilgisayardan çıkan ses videoya eklenir": "Audio playing on your Mac is added to the video",
+    "İmleci göster": "Show cursor",
+    "Kayıt sırasında sağ üstte kırmızı nokta ve süre görünür. Sadece sen görürsün, kayda girmez. Tıklayınca kayıt durur.": "While recording, a red dot and timer appear at the top right. Only you can see it; it isn't recorded. Click it to stop.",
+    "Klasörü Finder'da aç": "Open folder in Finder",
+    "Klasör…": "Folder…",
+    "Seç": "Choose",
+
+    // Ayarlar: İzinler
+    "Durum": "Status",
+    "Kısayollar çalışıyor": "Shortcuts are working",
+    "Kısayollar için izin gerekli": "Permission required for shortcuts",
+    "⌘Tab, ⌥Tab ve ses kısayolu aktif.": "⌘Tab, ⌥Tab and the sound shortcut are active.",
+    "Erişilebilirlik izni verilene kadar hiçbir kısayol çalışmaz.": "No shortcuts work until Accessibility permission is granted.",
+    "Yenile": "Refresh",
+    "Gerekli izinler": "Required permissions",
+    "Erişilebilirlik": "Accessibility",
+    "⌘Tab, ⌥Tab ve ses kısayolu (⌘⇧ / ⌘⇪) için. Pencerelere geçmek, kapatmak, küçültmek için de kullanılır.": "For ⌘Tab, ⌥Tab and the sound shortcut (⌘⇧ / ⌘⇪). Also used to switch, close and minimize windows.",
+    "Pencere önizlemeleri, ekran görüntüsü ve ekran kaydı için. İzni verdikten sonra uygulamayı bir kez kapatıp aç.": "For window previews, screenshots and screen recording. Quit and reopen the app once after granting it.",
+    "Şu an gerekmiyor: önizlemeler ve ekran çekimi kapalı.": "Not needed right now: previews and screen capture are off.",
+    "Bilgi": "Info",
+    "Giriş İzleme izni gerekmez (eski AudioHop'tan kalmışsa kapatabilirsin).": "Input Monitoring permission isn't needed (you can turn it off if it's left over from AudioHop).",
+    "Yeniden derledikten sonra izin açık görünüp çalışmıyorsa: listeden AudioTab'ı – ile kaldırıp + ile tekrar ekle.": "If a permission looks on but doesn't work after a rebuild: remove AudioTab from the list with – and add it again with +.",
+    "Hiçbir şey kaydedilmez, diske yazılmaz, internete gönderilmez.": "Nothing is logged, written to disk or sent over the internet.",
+    "Verildi": "Granted",
+    "Verilmedi": "Not granted",
+    "Ayarları aç": "Open Settings",
+
+    // Ayarlar: Genel / Güncellemeler
+    "Henüz denetlenmedi": "Not checked yet",
+    "Denetleniyor…": "Checking…",
+    "Güncel": "Up to date",
+    "Yeni sürüm var: %@": "New version available: %@",
+    "İndiriliyor…": "Downloading…",
+    "Yükleniyor, uygulama yeniden açılacak…": "Installing, the app will reopen…",
+    "Güncellemeler": "Updates",
+    "Sürüm %@": "Version %@",
+    "Yükle ve yeniden aç": "Install and Relaunch",
+    "Şimdi denetle": "Check Now",
+    "Otomatik denetle": "Check automatically",
+    "Açılışta ve 6 saatte bir GitHub'a bakar; yeni sürüm olunca haber verir": "Checks GitHub at launch and every 6 hours; lets you know when a new version is out",
+    "Son denetim: %@": "Last checked: %@",
+    "GitHub'da aç": "Open on GitHub",
+    "Başlangıç": "Startup",
+    "Girişte başlat": "Launch at login",
+    "Uygulama /Applications klasöründe olmalı": "The app must be in the /Applications folder",
+    "Hakkında": "About",
+    "Dil": "Language",
+    "Uygulamanın dili": "App language",
+    "Dil değişikliği için AudioTab yeniden başlatılır": "AudioTab restarts to change the language",
+    "Yeniden başlat": "Restart",
+
+    // ⌘Tab kartları
+    "Sistem": "System",
+    "Pencere yok": "No windows",
+    "Küçültülmüş": "Minimized",
+    "Gizli": "Hidden",
+    "Pencereyi kapat": "Close window",
+    "Ekranın bir bölmesine taşı": "Move to a part of the screen",
+    "Ses: %@": "Sound: %@",
+
+    // Ekran bölme
+    "Tam ekran": "Full screen",
+    "2 dikey": "2 columns",
+    "2 yatay": "2 rows",
+    "3 dikey": "3 columns",
+    "½ + ¼ ¼": "½ + ¼ ¼",
+    "4 (2×2)": "4 (2×2)",
+    "6 (3×2)": "6 (3×2)",
+    "buradasın": "you're here",
+    "Buradasın": "You're here",
+    "Ekranı Böl": "Split Screen",
+    "1–9 monitör seç · ← → değiştir · ↩ devam · Esc kapat": "1–9 choose display · ← → change · ↩ continue · Esc close",
+    "1–9 düzen seç · oklar gezin · ↩ seç · Tab / ⌘< monitör değiştir · Esc kapat": "1–9 choose layout · arrows navigate · ↩ select · Tab / ⌘< change display · Esc close",
+    "↑↓ pencere · ↩ veya tıkla bu bölmeye koy · Space bölmeyi boş bırak · ⌫ temizle · ⌘↩ uygula · ← geri · Esc düzenlere dön": "↑↓ window · ↩ or click to place in this zone · Space leave empty · ⌫ clear · ⌘↩ apply · ← back · Esc back to layouts",
+    "Hangi monitörde?": "Which display?",
+    "Ekranı kaça bölelim?": "How should the screen be split?",
+    "Bölme %@ / %@: hangi pencere?": "Zone %@ / %@: which window?",
+    "Boş bırak": "Leave empty",
+    "Düzenlere dön": "Back to layouts",
+    "Uygula": "Apply",
+    "Taşınabilir pencere yok": "No movable windows",
+    "Bölme %@": "Zone %@",
+    "Ekranın hangi bölmesine?": "Which part of the screen?",
+    "Bir bölmeye tıkla · Tab / ← → monitör · Esc kapat": "Click a zone · Tab / ← → display · Esc close",
+
+    // Güncelleyici hataları
+    "Repo adresi geçersiz": "Invalid repository address",
+    "Henüz yayınlanmış sürüm yok": "No published release yet",
+    "GitHub cevabı okunamadı": "Couldn't read GitHub's response",
+    "İndirme başarısız (%@)": "Download failed (%@)",
+    "Paket içinde AudioTab.app yok": "AudioTab.app is missing from the package",
+    "%@ klasörüne yazılamıyor": "Can't write to %@",
+    "Yeni sürümün imzası okunamadı": "Couldn't read the new version's signature",
+    "Yeni sürümün imzası geçersiz": "The new version's signature is invalid",
+    "Mevcut uygulamanın imzası okunamadı": "Couldn't read the current app's signature",
+    "Paket kimliği uyuşmuyor": "Bundle identifier doesn't match",
+    "Yeni sürüm farklı bir sertifikayla imzalanmış, yüklenmedi": "The new version is signed with a different certificate and was not installed",
+    "%@ hata verdi (%@)": "%@ failed (%@)",
+]

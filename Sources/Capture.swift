@@ -81,9 +81,9 @@ enum CaptureError: LocalizedError {
     case noDisplay, writer, tooSmall
     var errorDescription: String? {
         switch self {
-        case .noDisplay: return "Monitör bulunamadı"
-        case .writer: return "Video dosyası oluşturulamadı"
-        case .tooSmall: return "Seçilen alan çok küçük"
+        case .noDisplay: return L("Monitör bulunamadı")
+        case .writer: return L("Video dosyası oluşturulamadı")
+        case .tooSmall: return L("Seçilen alan çok küçük")
         }
     }
 }
@@ -580,7 +580,7 @@ struct RecordingBadge: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Kaydı durdur")
+        .help(L("Kaydı durdur"))
         .onAppear { pulse = true }
         .environment(\.colorScheme, .dark)
     }
@@ -669,11 +669,11 @@ enum CaptureAction: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .screen: return "Bu monitör"
-        case .area: return "Alan"
-        case .scroll: return "Kaydırmalı"
-        case .recordScreen: return "Monitörü kaydet"
-        case .recordArea: return "Alanı kaydet"
+        case .screen: return L("Bu monitör")
+        case .area: return L("Alan")
+        case .scroll: return L("Kaydırmalı")
+        case .recordScreen: return L("Monitörü kaydet")
+        case .recordArea: return L("Alanı kaydet")
         }
     }
     var symbol: String {
@@ -719,7 +719,7 @@ struct CapturePaletteView: View {
                     .background(Circle().fill(.white.opacity(0.12)))
             }
             .buttonStyle(.plain)
-            .help("Kapat (Esc)")
+            .help(L("Kapat (Esc)"))
         }
         .foregroundStyle(Color.white)
         .padding(12)
@@ -838,19 +838,19 @@ struct CapturePaletteView: View {
     private func ensurePermission() -> Bool {
         if CGPreflightScreenCaptureAccess() { return true }
         _ = CGRequestScreenCaptureAccess()
-        hud.show(name: "Ekran Kaydı izni gerekli (Ayarlar › İzinler)", symbol: "lock.fill")
+        hud.show(name: L("Ekran Kaydı izni gerekli (Ayarlar › İzinler)"), symbol: "lock.fill")
         return false
     }
 
     /// preview: sağ altta önizleme kartı (tıklayınca dosya klasörde seçili açılır). false: küçük bildirim.
     private func done(_ url: URL?, _ label: String, symbol: String, image: Bool = true, preview: Bool = true) {
         guard let url else {
-            hud.show(name: "\(label) kaydedilemedi", symbol: "exclamationmark.triangle.fill")
+            hud.show(name: L("%@ kaydedilemedi", label), symbol: "exclamationmark.triangle.fill")
             return
         }
         if image && CaptureSettings.copyToClipboard { CaptureFiles.copyImage(at: url) }
         if preview {
-            toast.show(url: url, title: "\(label) kaydedildi", isVideo: !image)
+            toast.show(url: url, title: L("%@ kaydedildi", label), isVideo: !image)
         } else {
             hud.show(name: "\(label) · \(url.deletingLastPathComponent().lastPathComponent)", symbol: symbol)
         }
@@ -887,7 +887,7 @@ struct CapturePaletteView: View {
 
     func screenshotCurrentScreen() {
         guard ensurePermission(), let screen = screenUnderMouse() else { return }
-        let url = CaptureFiles.newURL(.screen, prefix: "Ekran Görüntüsü", ext: "png")
+        let url = CaptureFiles.newURL(.screen, prefix: L("Ekran Görüntüsü"), ext: "png")
         let id = displayID(of: screen)
         let scale = screen.backingScaleFactor
         let cliArgs = ["-x", "-D", "\(CaptureFiles.cliDisplayIndex(id))"]
@@ -895,15 +895,15 @@ struct CapturePaletteView: View {
             Task { @MainActor in
                 do {
                     let img = try await SCHelper.image(displayID: id, rect: nil, scale: scale)
-                    self.save(img, to: url, scale: scale, label: "Ekran görüntüsü")
+                    self.save(img, to: url, scale: scale, label: L("Ekran görüntüsü"))
                 } catch {
                     if CaptureSettings.playSound { CaptureFiles.playShutter() }
-                    self.runScreencapture(cliArgs, url: url, label: "Ekran görüntüsü")
+                    self.runScreencapture(cliArgs, url: url, label: L("Ekran görüntüsü"))
                 }
             }
         } else {
             if CaptureSettings.playSound { CaptureFiles.playShutter() }
-            runScreencapture(cliArgs, url: url, label: "Ekran görüntüsü")
+            runScreencapture(cliArgs, url: url, label: L("Ekran görüntüsü"))
         }
     }
 
@@ -911,19 +911,19 @@ struct CapturePaletteView: View {
 
     func screenshotArea() {
         guard ensurePermission() else { return }
-        let url = CaptureFiles.newURL(.area, prefix: "Ekran Alıntısı", ext: "png")
-        runScreencapture(CaptureSettings.playSound ? ["-i"] : ["-i", "-x"], url: url, label: "Ekran alıntısı", preview: false)
+        let url = CaptureFiles.newURL(.area, prefix: L("Ekran Alıntısı"), ext: "png")
+        runScreencapture(CaptureSettings.playSound ? ["-i"] : ["-i", "-x"], url: url, label: L("Ekran alıntısı"), preview: false)
     }
 
     // MARK: ⌘⇧6 — kaydırmalı görüntü
 
     func scrollingScreenshot() {
         guard #available(macOS 14.0, *) else {
-            hud.show(name: "Kaydırmalı görüntü macOS 14 veya üstü ister", symbol: "exclamationmark.triangle.fill")
+            hud.show(name: L("Kaydırmalı görüntü macOS 14 veya üstü ister"), symbol: "exclamationmark.triangle.fill")
             return
         }
         guard ensurePermission(), !scrolling else { return }
-        selector.begin(hint: "Kaydırılacak alanı seç (sayfanın içi) · Esc iptal") { [weak self] screen, rect in
+        selector.begin(hint: L("Kaydırılacak alanı seç (sayfanın içi) · Esc iptal")) { [weak self] screen, rect in
             self?.runScrolling(screen: screen, rect: rect)
         }
     }
@@ -936,11 +936,11 @@ struct CapturePaletteView: View {
         let primaryH = NSScreen.screens.first?.frame.height ?? screen.frame.height
         let center = CGPoint(x: rect.midX, y: primaryH - rect.midY)   // genel CG koordinatı (sol üst)
         let step = max(40, rect.height * 0.6)
-        let url = CaptureFiles.newURL(.scroll, prefix: "Kaydırmalı Görüntü", ext: "png")
+        let url = CaptureFiles.newURL(.scroll, prefix: L("Kaydırmalı Görüntü"), ext: "png")
 
         scrolling = true
         scrollCancelled = false
-        note.show("Kaydırmalı çekim… Esc ile bitir", symbol: "scroll", on: screen)
+        note.show(L("Kaydırmalı çekim… Esc ile bitir"), symbol: "scroll", on: screen)
         installEsc()
 
         Task { @MainActor in
@@ -971,9 +971,9 @@ struct CapturePaletteView: View {
                     try await Task.sleep(nanoseconds: 380_000_000)
                 }
                 guard let out = stitcher?.makeImage() else { throw CaptureError.tooSmall }
-                self.save(out, to: url, scale: scale, label: "Kaydırmalı görüntü")
+                self.save(out, to: url, scale: scale, label: L("Kaydırmalı görüntü"))
             } catch {
-                self.hud.show(name: "Kaydırmalı görüntü alınamadı", symbol: "exclamationmark.triangle.fill")
+                self.hud.show(name: L("Kaydırmalı görüntü alınamadı"), symbol: "exclamationmark.triangle.fill")
             }
         }
     }
@@ -1004,7 +1004,7 @@ struct CapturePaletteView: View {
     func startRecording(area: Bool) {
         guard !isRecording, ensurePermission() else { return }
         if area {
-            selector.begin(hint: "Kaydedilecek alanı seç · Esc iptal") { [weak self] screen, rect in
+            selector.begin(hint: L("Kaydedilecek alanı seç · Esc iptal")) { [weak self] screen, rect in
                 self?.record(screen: screen, rect: RegionSelector.local(rect, in: screen))
             }
         } else if let screen = screenUnderMouse() {
@@ -1013,7 +1013,7 @@ struct CapturePaletteView: View {
     }
 
     private func record(screen: NSScreen, rect: CGRect?) {
-        let url = CaptureFiles.newURL(.video, prefix: "Ekran Kaydı", ext: "mp4")
+        let url = CaptureFiles.newURL(.video, prefix: L("Ekran Kaydı"), ext: "mp4")
         let id = displayID(of: screen)
         let scale = screen.backingScaleFactor
         isRecording = true
@@ -1029,7 +1029,7 @@ struct CapturePaletteView: View {
             } catch {
                 self.isRecording = false
                 self.onRecordingChanged?(false)
-                self.hud.show(name: "Kayıt başlatılamadı: \(error.localizedDescription)", symbol: "exclamationmark.triangle.fill")
+                self.hud.show(name: L("Kayıt başlatılamadı: %@", error.localizedDescription), symbol: "exclamationmark.triangle.fill")
             }
         }
     }
@@ -1048,7 +1048,7 @@ struct CapturePaletteView: View {
             let url = await self.recorder.stop()
             self.isRecording = false
             self.onRecordingChanged?(false)
-            self.done(url, "Ekran kaydı", symbol: "film.fill", image: false)
+            self.done(url, L("Ekran kaydı"), symbol: "film.fill", image: false)
             completion?()
         }
     }
@@ -1096,7 +1096,7 @@ struct CaptureToastView: View {
                         Text(title).font(.system(size: 13, weight: .semibold))
                         Text(fileName).font(.system(size: 11)).foregroundStyle(.white.opacity(0.7))
                             .lineLimit(2).truncationMode(.middle)
-                        Label("Klasörde göster", systemImage: "folder")
+                        Label(L("Klasörde göster"), systemImage: "folder")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(Color.accentColor)
                     }
@@ -1117,7 +1117,7 @@ struct CaptureToastView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(6)
-                .help("Kapat")
+                .help(L("Kapat"))
             }
         }
         .foregroundStyle(Color.white)

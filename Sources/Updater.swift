@@ -121,7 +121,7 @@ final class Updater: ObservableObject {
 
     private static func fetchFromAPI() async throws -> ReleaseInfo {
         guard let url = URL(string: "https://api.github.com/repos/\(UpdateConfig.repo)/releases/latest") else {
-            throw UpdateError.message("Repo adresi geçersiz")
+            throw UpdateError.message(L("Repo adresi geçersiz"))
         }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -131,12 +131,12 @@ final class Updater: ObservableObject {
         let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
         let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         guard status == 200 else {
-            if status == 404 { throw UpdateError.message("Henüz yayınlanmış sürüm yok") }
+            if status == 404 { throw UpdateError.message(L("Henüz yayınlanmış sürüm yok")) }
             let msg = json?["message"] as? String ?? "HTTP \(status)"
             throw UpdateError.message("GitHub: \(msg)")
         }
         guard let json, let tag = json["tag_name"] as? String else {
-            throw UpdateError.message("GitHub cevabı okunamadı")
+            throw UpdateError.message(L("GitHub cevabı okunamadı"))
         }
         let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
         let assets = json["assets"] as? [[String: Any]] ?? []
@@ -150,14 +150,14 @@ final class Updater: ObservableObject {
     /// github.com/…/releases/latest → …/releases/tag/v2.3.0 yönlendirmesinden sürümü al
     private static func fetchFromRedirect() async throws -> ReleaseInfo {
         guard let url = URL(string: "https://github.com/\(UpdateConfig.repo)/releases/latest") else {
-            throw UpdateError.message("Repo adresi geçersiz")
+            throw UpdateError.message(L("Repo adresi geçersiz"))
         }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         req.httpMethod = "HEAD"
         req.setValue("AudioTab-Updater", forHTTPHeaderField: "User-Agent")
         let (_, resp) = try await URLSession.shared.data(for: req)
         guard let final = resp.url, final.path.contains("/releases/tag/") else {
-            throw UpdateError.message("Henüz yayınlanmış sürüm yok")
+            throw UpdateError.message(L("Henüz yayınlanmış sürüm yok"))
         }
         let tag = final.lastPathComponent
         let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
@@ -193,7 +193,7 @@ final class Updater: ObservableObject {
                 try fm.createDirectory(at: work, withIntermediateDirectories: true)
                 let (tmp, resp) = try await URLSession.shared.download(from: info.zipURL)
                 if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                    throw UpdateError.message("İndirme başarısız (\(http.statusCode))")
+                    throw UpdateError.message(L("İndirme başarısız (%@)", "\(http.statusCode)"))
                 }
                 let zip = work.appendingPathComponent("AudioTab.zip")
                 try fm.moveItem(at: tmp, to: zip)
@@ -201,7 +201,7 @@ final class Updater: ObservableObject {
                 set(.installing)
                 try Self.run("/usr/bin/ditto", ["-x", "-k", zip.path, work.path])
                 let newApp = work.appendingPathComponent("AudioTab.app")
-                guard fm.fileExists(atPath: newApp.path) else { throw UpdateError.message("Paket içinde AudioTab.app yok") }
+                guard fm.fileExists(atPath: newApp.path) else { throw UpdateError.message(L("Paket içinde AudioTab.app yok")) }
                 try Self.verify(newApp)
                 _ = try? Self.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
 
@@ -223,7 +223,7 @@ final class Updater: ObservableObject {
     private static func replace(_ dest: URL, with newApp: URL) throws {
         let fm = FileManager.default
         guard fm.isWritableFile(atPath: dest.deletingLastPathComponent().path) else {
-            throw UpdateError.message("\(dest.deletingLastPathComponent().path) klasörüne yazılamıyor")
+            throw UpdateError.message(L("%@ klasörüne yazılamıyor", dest.deletingLastPathComponent().path))
         }
         // Eski sürümü çöpe at (geri dönmek istersen Çöp'te durur), yenisini yerine kopyala
         var trashed: NSURL?
@@ -235,6 +235,9 @@ final class Updater: ObservableObject {
             throw error
         }
     }
+
+    /// Uygulamayı kapatıp yeniden aç (dil değişikliği vb.)
+    @MainActor static func relaunchApp() { relaunch(Bundle.main.bundleURL) }
 
     @MainActor private static func relaunch(_ app: URL) {
         let p = Process()
@@ -251,7 +254,7 @@ final class Updater: ObservableObject {
         p.arguments = args
         try p.run()
         p.waitUntilExit()
-        if p.terminationStatus != 0 { throw UpdateError.message("\((tool as NSString).lastPathComponent) hata verdi (\(p.terminationStatus))") }
+        if p.terminationStatus != 0 { throw UpdateError.message(L("%@ hata verdi (%@)", (tool as NSString).lastPathComponent, "\(p.terminationStatus)")) }
         return p.terminationStatus
     }
 
@@ -260,17 +263,17 @@ final class Updater: ObservableObject {
     static func verify(_ newApp: URL) throws {
         var newCodeRef: SecStaticCode?
         guard SecStaticCodeCreateWithPath(newApp as CFURL, [], &newCodeRef) == errSecSuccess, let newCode = newCodeRef else {
-            throw UpdateError.message("Yeni sürümün imzası okunamadı")
+            throw UpdateError.message(L("Yeni sürümün imzası okunamadı"))
         }
         guard SecStaticCodeCheckValidity(newCode, [], nil) == errSecSuccess else {
-            throw UpdateError.message("Yeni sürümün imzası geçersiz")
+            throw UpdateError.message(L("Yeni sürümün imzası geçersiz"))
         }
 
         var selfRef: SecCode?
         var selfStaticRef: SecStaticCode?
         guard SecCodeCopySelf([], &selfRef) == errSecSuccess, let me = selfRef,
               SecCodeCopyStaticCode(me, [], &selfStaticRef) == errSecSuccess, let meStatic = selfStaticRef else {
-            throw UpdateError.message("Mevcut uygulamanın imzası okunamadı")
+            throw UpdateError.message(L("Mevcut uygulamanın imzası okunamadı"))
         }
         var infoRef: CFDictionary?
         _ = SecCodeCopySigningInformation(meStatic, SecCSFlags(rawValue: 1 << 1), &infoRef)   // kSecCSSigningInformation
@@ -281,13 +284,13 @@ final class Updater: ObservableObject {
         if adhoc {
             let newID = Bundle(url: newApp)?.bundleIdentifier
             guard newID != nil, newID == Bundle.main.bundleIdentifier else {
-                throw UpdateError.message("Paket kimliği uyuşmuyor")
+                throw UpdateError.message(L("Paket kimliği uyuşmuyor"))
             }
         } else {
             var reqRef: SecRequirement?
             guard SecCodeCopyDesignatedRequirement(meStatic, [], &reqRef) == errSecSuccess, let req = reqRef,
                   SecStaticCodeCheckValidity(newCode, [], req) == errSecSuccess else {
-                throw UpdateError.message("Yeni sürüm farklı bir sertifikayla imzalanmış, yüklenmedi")
+                throw UpdateError.message(L("Yeni sürüm farklı bir sertifikayla imzalanmış, yüklenmedi"))
             }
         }
     }

@@ -90,11 +90,11 @@ struct DevicePanelView: View {
         let connected = store.panelRows.filter(\.isConnected)
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Label("Ses Çıkışı", systemImage: "speaker.wave.2.fill")
+                Label(L("Ses Çıkışı"), systemImage: "speaker.wave.2.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
                 Spacer()
-                Text("\(store.hotkeyChoice.stepKey) sonraki · ⌘ bırak / ↩ seç · esc")
+                Text(L("%@ sonraki · ⌘ bırak / ↩ seç · esc", store.hotkeyChoice.stepKey))
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(.white.opacity(0.5))
             }
@@ -123,9 +123,9 @@ struct DeviceRowView: View {
     let highlighted: Bool
 
     private var subtitle: String {
-        if row.isCurrent { return "Şu an çalıyor" }
-        if !row.isConnected { return "Bağlı değil · hatırlanıyor" }
-        return row.inCycle ? "Kısayol döngüsünde" : "Bağlı"
+        if row.isCurrent { return L("Şu an çalıyor") }
+        if !row.isConnected { return L("Bağlı değil · hatırlanıyor") }
+        return row.inCycle ? L("Kısayol döngüsünde") : L("Bağlı")
     }
 
     var body: some View {

@@ -96,7 +96,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                          backing: .buffered, defer: false)
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
-        w.title = "AudioTab Ayarları"
+        w.title = L("AudioTab Ayarları")
         w.isMovableByWindowBackground = true
         w.isOpaque = false
         w.backgroundColor = .clear
@@ -120,11 +120,11 @@ struct SettingsView: View {
     @ObservedObject var updater: Updater
     @State private var tab = 0
 
-    private let tabs = [("Ses", "speaker.wave.2.fill"),
-                        ("Pencereler", "rectangle.on.rectangle"),
-                        ("Ekran", "camera.viewfinder"),
-                        ("İzinler", "lock.shield.fill"),
-                        ("Genel", "gearshape.fill")]
+    private let tabs = [(L("Ses"), "speaker.wave.2.fill"),
+                        (L("Pencereler"), "rectangle.on.rectangle"),
+                        (L("Ekran"), "camera.viewfinder"),
+                        (L("İzinler"), "lock.shield.fill"),
+                        (L("Genel"), "gearshape.fill")]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -179,9 +179,9 @@ struct SettingsView: View {
 
     @ViewBuilder private var audioTab: some View {
         let key = store.hotkeyChoice
-        Card(title: "Kısayol", icon: "keyboard") {
-            Row("Tuş kombinasyonu",
-                key == .cmdShift ? "⌘ basılıyken ⇧'ye dokun. ⌘⇧4 gibi kısayolları bozmaz." : "⌘ + Caps Lock") {
+        Card(title: L("Kısayol"), icon: "keyboard") {
+            Row(L("Tuş kombinasyonu"),
+                key == .cmdShift ? L("⌘ basılıyken ⇧'ye dokun. ⌘⇧4 gibi kısayolları bozmaz.") : "⌘ + Caps Lock") {
                 Picker("", selection: model.bind({ store.hotkeyChoice }, { v in
                     store.hotkeyChoice = v
                     model.onHotkeyChanged()
@@ -194,24 +194,24 @@ struct SettingsView: View {
                 .frame(width: 120)
             }
             Divider().opacity(0.4)
-            Row("\(key.symbol) basınca", nil) {
+            Row(L("%@ basınca", key.symbol), nil) {
                 Picker("", selection: model.bind({ store.mode }, { store.mode = $0 })) {
-                    Text("Sıradakine geç").tag(HotkeyMode.cycle)
-                    Text("Listeyi göster").tag(HotkeyMode.panel)
+                    Text(L("Sıradakine geç")).tag(HotkeyMode.cycle)
+                    Text(L("Listeyi göster")).tag(HotkeyMode.panel)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 240)
             }
             if store.mode == .panel {
-                ToggleRow("⌘ bırakınca seç", "⌘+Tab gibi: ⌘'yi bırakınca vurgulu cihaz seçilir",
+                ToggleRow(L("⌘ bırakınca seç"), L("⌘+Tab gibi: ⌘'yi bırakınca vurgulu cihaz seçilir"),
                           isOn: model.bind({ store.selectOnRelease }, { store.selectOnRelease = $0 }))
             } else {
-                ToggleRow("Geçişte bildirim göster", "Ekranın altında küçük cam bildirim",
+                ToggleRow(L("Geçişte bildirim göster"), L("Ekranın altında küçük cam bildirim"),
                           isOn: model.bind({ store.showHUD }, { store.showHUD = $0 }))
             }
             if key == .cmdCaps {
-                ToggleRow("Caps Lock'u açık bırakma", "⌘⇪ sonrası Caps Lock eski haline döner",
+                ToggleRow(L("Caps Lock'u açık bırakma"), L("⌘⇪ sonrası Caps Lock eski haline döner"),
                           isOn: model.bind({ store.keepCapsLock }, { v in
                               store.keepCapsLock = v
                               model.onHotkeyChanged()
@@ -219,11 +219,11 @@ struct SettingsView: View {
             }
         }
 
-        Card(title: "Ses cihazları", icon: "hifispeaker.2.fill") {
-            Row("Listede görünenler", nil) {
+        Card(title: L("Ses cihazları"), icon: "hifispeaker.2.fill") {
+            Row(L("Listede görünenler"), nil) {
                 Picker("", selection: model.bind({ store.panelShowAll }, { store.panelShowAll = $0 })) {
-                    Text("Tümü").tag(true)
-                    Text("Seçtiklerim").tag(false)
+                    Text(L("Tümü")).tag(true)
+                    Text(L("Seçtiklerim")).tag(false)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -232,16 +232,16 @@ struct SettingsView: View {
             Divider().opacity(0.4)
 
             HStack {
-                Text("Cihaz").frame(maxWidth: .infinity, alignment: .leading)
-                Text("\(key.symbol) döngüsü").frame(width: 82)
-                Text("Listede").frame(width: 60)
+                Text(L("Cihaz")).frame(maxWidth: .infinity, alignment: .leading)
+                Text(L("%@ döngüsü", key.symbol)).frame(width: 82)
+                Text(L("Listede")).frame(width: 60)
                 Color.clear.frame(width: 26)
             }
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(.white.opacity(0.55))
 
             if store.rows.isEmpty {
-                Text("Henüz cihaz yok").foregroundStyle(.white.opacity(0.5))
+                Text(L("Henüz cihaz yok")).foregroundStyle(.white.opacity(0.5))
             }
             ForEach(store.rows) { row in
                 HStack(spacing: 10) {
@@ -250,7 +250,7 @@ struct SettingsView: View {
                         .foregroundStyle(row.isCurrent ? Color.accentColor : .white.opacity(0.85))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(row.name).font(.system(size: 13, weight: .medium)).lineLimit(1)
-                        Text(row.isCurrent ? "Şu an çalıyor" : (row.isConnected ? "Bağlı" : "Bağlı değil · hatırlanıyor"))
+                        Text(row.isCurrent ? L("Şu an çalıyor") : (row.isConnected ? L("Bağlı") : L("Bağlı değil · hatırlanıyor")))
                             .font(.system(size: 10.5))
                             .foregroundStyle(.white.opacity(0.5))
                     }
@@ -269,7 +269,7 @@ struct SettingsView: View {
                             Button { store.forget(row.id) } label: { Image(systemName: "trash") }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(.white.opacity(0.6))
-                                .help("Bu cihazı unut")
+                                .help(L("Bu cihazı unut"))
                         } else {
                             Color.clear
                         }
@@ -283,12 +283,12 @@ struct SettingsView: View {
             }
 
             if store.usingFallback {
-                Text("Döngüde 2'den az takılı cihaz var → kısayol tüm takılı cihazlar arasında geçer.")
+                Text(L("Döngüde 2'den az takılı cihaz var → kısayol tüm takılı cihazlar arasında geçer."))
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.5))
             }
             if store.passthroughActive {
-                Label("eqMac algılandı: ses eqMac üzerinden seçtiğin cihaza gidiyor.", systemImage: "slider.vertical.3")
+                Label(L("eqMac algılandı: ses eqMac üzerinden seçtiğin cihaza gidiyor."), systemImage: "slider.vertical.3")
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.6))
             }
@@ -308,15 +308,15 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var appAudioCard: some View {
-        Card(title: "Uygulamaya göre ses cihazı", icon: "app.badge") {
-            ToggleRow("Uygulamaya geçince ses cihazını değiştir",
-                      "Atadığın uygulama öne gelince ses o cihaza geçer. ⌘Tab açıkken S ile de atayabilirsin.",
+        Card(title: L("Uygulamaya göre ses cihazı"), icon: "app.badge") {
+            ToggleRow(L("Uygulamaya geçince ses cihazını değiştir"),
+                      L("Atadığın uygulama öne gelince ses o cihaza geçer. ⌘Tab açıkken S ile de atayabilirsin."),
                       isOn: model.bind({ store.autoSwitchByApp }, { store.autoSwitchByApp = $0 }))
             Divider().opacity(0.4)
 
             let mapped = store.appAudio.keys.sorted { appInfo($0).name.localizedCaseInsensitiveCompare(appInfo($1).name) == .orderedAscending }
             if mapped.isEmpty {
-                Text("Henüz atama yok.")
+                Text(L("Henüz atama yok."))
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.5))
             }
@@ -333,9 +333,9 @@ struct SettingsView: View {
                     Picker("", selection: Binding(
                         get: { store.appAudio[bid] ?? "" },
                         set: { store.setAppDevice($0.isEmpty ? nil : $0, bundleID: bid) })) {
-                        Text("Atama yok").tag("")
+                        Text(L("Atama yok")).tag("")
                         ForEach(store.rows) { row in
-                            Text(row.isConnected ? row.name : "\(row.name) (bağlı değil)").tag(row.id)
+                            Text(row.isConnected ? row.name : L("%@ (bağlı değil)", row.name)).tag(row.id)
                         }
                     }
                     .labelsHidden()
@@ -344,7 +344,7 @@ struct SettingsView: View {
                     Button { store.setAppDevice(nil, bundleID: bid) } label: { Image(systemName: "trash") }
                         .buttonStyle(.plain)
                         .foregroundStyle(.white.opacity(0.6))
-                        .help("Atamayı kaldır")
+                        .help(L("Atamayı kaldır"))
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 8)
@@ -367,7 +367,7 @@ struct SettingsView: View {
                     }
                 }
             } label: {
-                Label("Açık bir uygulama ekle", systemImage: "plus.circle.fill")
+                Label(L("Açık bir uygulama ekle"), systemImage: "plus.circle.fill")
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
@@ -392,51 +392,51 @@ struct SettingsView: View {
     @ViewBuilder private var windowsTab: some View {
         ForEach(Profile.allCases, id: \.self) { p in
             Card(title: p.title, icon: p == .cmd ? "command" : "option") {
-                ToggleRow("Kısayolu kullan",
-                          p == .cmd ? "Kapatınca macOS'un kendi ⌘Tab'ı geri gelir" : nil,
+                ToggleRow(L("Kısayolu kullan"),
+                          p == .cmd ? L("Kapatınca macOS'un kendi ⌘Tab'ı geri gelir") : nil,
                           isOn: model.profileBinding(p, "enabled"))
                 Divider().opacity(0.4)
-                Row("Görünüm", p.list ? "Alt alta satırlar, ses listesi gibi" : "Kartlar yan yana") {
+                Row(L("Görünüm"), p.list ? L("Alt alta satırlar, ses listesi gibi") : L("Kartlar yan yana")) {
                     Picker("", selection: model.profileBinding(p, "list")) {
-                        Text("Izgara").tag(false)
-                        Text("Liste").tag(true)
+                        Text(L("Izgara")).tag(false)
+                        Text(L("Liste")).tag(true)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 160)
                 }
                 .disabled(!p.enabled)
-                ToggleRow("Pencere önizlemeleri", p.list ? "Liste görünümünde kullanılmaz" : "Ekran Kaydı izni gerekir (macOS 14+)",
+                ToggleRow(L("Pencere önizlemeleri"), p.list ? L("Liste görünümünde kullanılmaz") : L("Ekran Kaydı izni gerekir (macOS 14+)"),
                           isOn: model.profileBinding(p, "previews"))
                     .disabled(!p.enabled || p.list)
-                ToggleRow("Küçültülmüş pencereler", "Küçültülmüş ve penceresiz uygulamaları da göster",
+                ToggleRow(L("Küçültülmüş pencereler"), L("Küçültülmüş ve penceresiz uygulamaları da göster"),
                           isOn: model.profileBinding(p, "showMinimized"))
                     .disabled(!p.enabled)
             }
         }
-        Card(title: "Pencereleri her zaman bul", icon: "scope") {
-            Row("Kapsam", "Diğer masaüstlerindeki, tam ekrandaki ve arkada kalan pencereleri de kesin gösterir (Chrome profilleri dahil). Arka planda, sadece masaüstü değişince ve uygulama açılınca güncellenir.") {
+        Card(title: L("Pencereleri her zaman bul"), icon: "scope") {
+            Row(L("Kapsam"), L("Diğer masaüstlerindeki, tam ekrandaki ve arkada kalan pencereleri de kesin gösterir (Chrome profilleri dahil). Arka planda, sadece masaüstü değişince ve uygulama açılınca güncellenir.")) {
                 Picker("", selection: model.bind({ DeepScanScope.current }, { v in
                     DeepScanScope.current = v
                     model.onDeepScanChanged()
                 })) {
-                    Text("Kapalı").tag(DeepScanScope.off)
-                    Text("Tarayıcılar").tag(DeepScanScope.browsers)
-                    Text("Tümü").tag(DeepScanScope.all)
+                    Text(L("Kapalı")).tag(DeepScanScope.off)
+                    Text(L("Tarayıcılar")).tag(DeepScanScope.browsers)
+                    Text(L("Tümü")).tag(DeepScanScope.all)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 250)
             }
         }
-        Card(title: "Panelde kısayollar", icon: "keyboard") {
+        Card(title: L("Panelde kısayollar"), icon: "keyboard") {
             VStack(alignment: .leading, spacing: 5) {
-                shortcut("Tab / ⇧Tab", "İleri / geri")
-                shortcut("← → ↑ ↓", "Gezin")
-                shortcut("⌘'yi bırak, ↩, Space, tıkla", "Seçili pencereye geç")
-                shortcut("Esc", "İptal")
-                shortcut("W · M · H · Q", "Kapat · Küçült · Gizle · Çık")
-                shortcut("S", "Uygulamanın ses cihazını değiştir")
+                shortcut("Tab / ⇧Tab", L("İleri / geri"))
+                shortcut("← → ↑ ↓", L("Gezin"))
+                shortcut(L("⌘'yi bırak, ↩, Space, tıkla"), L("Seçili pencereye geç"))
+                shortcut("Esc", L("İptal"))
+                shortcut("W · M · H · Q", L("Kapat · Küçült · Gizle · Çık"))
+                shortcut("S", L("Uygulamanın ses cihazını değiştir"))
             }
         }
     }
@@ -452,63 +452,63 @@ struct SettingsView: View {
     // MARK: Ekran (bölme + çekim)
 
     @ViewBuilder private var screenTab: some View {
-        Card(title: "Ekranı böl  ⌘<", icon: "rectangle.split.3x1") {
-            ToggleRow("Kısayolu kullan",
-                      "⌘< → kaça bölüneceğini seç → hangi pencere hangi bölmeye. ⌘Tab kartlarındaki bölme düğmesi aynı işi tek pencere için yapar. Açıkken macOS'un ⌘< (aynı uygulamanın pencereleri arasında geçiş) kısayolu kapanır.",
+        Card(title: L("Ekranı böl  ⌘<"), icon: "rectangle.split.3x1") {
+            ToggleRow(L("Kısayolu kullan"),
+                      L("⌘< → kaça bölüneceğini seç → hangi pencere hangi bölmeye. ⌘Tab kartlarındaki bölme düğmesi aynı işi tek pencere için yapar. Açıkken macOS'un ⌘< (aynı uygulamanın pencereleri arasında geçiş) kısayolu kapanır."),
                       isOn: model.bind({ TileSettings.enabled }, { v in
                           TileSettings.enabled = v
                           model.onShortcutsChanged()
                       }))
             if TileSettings.enabled {
                 Divider().opacity(0.4)
-                Row("Hedef monitör", "Birden fazla monitör varken. Panelde Tab ile her zaman değiştirebilirsin.") {
+                Row(L("Hedef monitör"), L("Birden fazla monitör varken. Panelde Tab ile her zaman değiştirebilirsin.")) {
                     Picker("", selection: model.bind({ TileSettings.askMonitor }, { TileSettings.askMonitor = $0 })) {
-                        Text("Farenin olduğu").tag(false)
-                        Text("Her seferinde sor").tag(true)
+                        Text(L("Farenin olduğu")).tag(false)
+                        Text(L("Her seferinde sor")).tag(true)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 250)
                 }
-                Row("Pencere arası boşluk", "\(Int(TileSettings.gap)) pt") {
+                Row(L("Pencere arası boşluk"), "\(Int(TileSettings.gap)) pt") {
                     Slider(value: model.bind({ TileSettings.gap }, { TileSettings.gap = $0 }), in: 0...24, step: 2)
                         .frame(width: 200)
                 }
             }
         }
 
-        Card(title: "Ekran görüntüsü ve kayıt", icon: "camera.viewfinder") {
-            ToggleRow("Kullan",
-                      "Kapatınca hepsi devre dışı kalır ve macOS'un kendi ⌘⇧3 / ⌘⇧4 / ⌘⇧5 kısayolları geri gelir.",
+        Card(title: L("Ekran görüntüsü ve kayıt"), icon: "camera.viewfinder") {
+            ToggleRow(L("Kullan"),
+                      L("Kapatınca hepsi devre dışı kalır ve macOS'un kendi ⌘⇧3 / ⌘⇧4 / ⌘⇧5 kısayolları geri gelir."),
                       isOn: model.bind({ CaptureSettings.enabled }, { v in
                           CaptureSettings.enabled = v
                           model.onShortcutsChanged()
                       }))
             if CaptureSettings.enabled {
                 Divider().opacity(0.4)
-                captureRow(.screen, key: "⌘⇧3", title: "Bu monitörün görüntüsü", detail: "Sadece farenin olduğu monitör",
+                captureRow(.screen, key: "⌘⇧3", title: L("Bu monitörün görüntüsü"), detail: L("Sadece farenin olduğu monitör"),
                            isOn: model.bind({ CaptureSettings.screenKey }, { v in CaptureSettings.screenKey = v; model.onShortcutsChanged() }))
-                captureRow(.area, key: "⌘⇧4", title: "Ekran alıntısı", detail: "Alan seç; Space ile pencere seçimi",
+                captureRow(.area, key: "⌘⇧4", title: L("Ekran alıntısı"), detail: L("Alan seç; Space ile pencere seçimi"),
                            isOn: model.bind({ CaptureSettings.areaKey }, { v in CaptureSettings.areaKey = v; model.onShortcutsChanged() }))
-                captureRow(.scroll, key: "⌘⇧6", title: "Kaydırmalı görüntü", detail: "Alanı seç, sayfa kendiliğinden kayar · Esc bitirir",
+                captureRow(.scroll, key: "⌘⇧6", title: L("Kaydırmalı görüntü"), detail: L("Alanı seç, sayfa kendiliğinden kayar · Esc bitirir"),
                            isOn: model.bind({ CaptureSettings.scrollKey }, { v in CaptureSettings.scrollKey = v; model.onShortcutsChanged() }))
-                captureRow(.video, key: "⌘⇧5", title: "Ekran kaydı (MP4 · H.264)", detail: "Çekim paleti; kayıt sırasında ⌘⇧5 durdurur",
+                captureRow(.video, key: "⌘⇧5", title: L("Ekran kaydı (MP4 · H.264)"), detail: L("Çekim paleti; kayıt sırasında ⌘⇧5 durdurur"),
                            isOn: model.bind({ CaptureSettings.videoKey }, { v in CaptureSettings.videoKey = v; model.onShortcutsChanged() }))
                 HStack {
                     Spacer()
-                    Button("Hepsini tek klasöre kaydet…") { pickFolderForAll() }
+                    Button(L("Hepsini tek klasöre kaydet…")) { pickFolderForAll() }
                 }
                 Divider().opacity(0.4)
-                ToggleRow("Panoya da kopyala", "Görüntüler kaydedilirken panoya da alınır",
+                ToggleRow(L("Panoya da kopyala"), L("Görüntüler kaydedilirken panoya da alınır"),
                           isOn: model.bind({ CaptureSettings.copyToClipboard }, { CaptureSettings.copyToClipboard = $0 }))
-                ToggleRow("Deklanşör sesi", nil,
+                ToggleRow(L("Deklanşör sesi"), nil,
                           isOn: model.bind({ CaptureSettings.playSound }, { CaptureSettings.playSound = $0 }))
             }
         }
 
         if CaptureSettings.enabled {
-            Card(title: "Video kaydı", icon: "record.circle") {
-                Row("Kare hızı", nil) {
+            Card(title: L("Video kaydı"), icon: "record.circle") {
+                Row(L("Kare hızı"), nil) {
                     Picker("", selection: model.bind({ CaptureSettings.fps }, { CaptureSettings.fps = $0 })) {
                         Text("30 fps").tag(30)
                         Text("60 fps").tag(60)
@@ -517,20 +517,20 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 160)
                 }
-                Row("Kalite", CaptureSettings.maxQuality ? "Kayıpsıza yakın, dosya büyük" : "Görüntü bozulmaz, dosya makul boyutta") {
+                Row(L("Kalite"), CaptureSettings.maxQuality ? L("Kayıpsıza yakın, dosya büyük") : L("Görüntü bozulmaz, dosya makul boyutta")) {
                     Picker("", selection: model.bind({ CaptureSettings.maxQuality }, { CaptureSettings.maxQuality = $0 })) {
-                        Text("Yüksek").tag(false)
-                        Text("En yüksek").tag(true)
+                        Text(L("Yüksek")).tag(false)
+                        Text(L("En yüksek")).tag(true)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 180)
                 }
-                ToggleRow("Sistem sesini kaydet", "Bilgisayardan çıkan ses videoya eklenir",
+                ToggleRow(L("Sistem sesini kaydet"), L("Bilgisayardan çıkan ses videoya eklenir"),
                           isOn: model.bind({ CaptureSettings.recordAudio }, { CaptureSettings.recordAudio = $0 }))
-                ToggleRow("İmleci göster", nil,
+                ToggleRow(L("İmleci göster"), nil,
                           isOn: model.bind({ CaptureSettings.showCursor }, { CaptureSettings.showCursor = $0 }))
-                Label("Kayıt sırasında sağ üstte kırmızı nokta ve süre görünür. Sadece sen görürsün, kayda girmez. Tıklayınca kayıt durur.",
+                Label(L("Kayıt sırasında sağ üstte kırmızı nokta ve süre görünür. Sadece sen görürsün, kayda girmez. Tıklayınca kayıt durur."),
                       systemImage: "record.circle")
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.6))
@@ -558,10 +558,10 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
-                .help("Klasörü Finder'da aç")
+                .help(L("Klasörü Finder'da aç"))
             }
             Spacer(minLength: 8)
-            Button("Klasör…") { pickFolder(kind) }
+            Button(L("Klasör…")) { pickFolder(kind) }
             Toggle("", isOn: isOn).toggleStyle(.switch).labelsHidden()
         }
         .padding(.vertical, 4)
@@ -587,7 +587,7 @@ struct SettingsView: View {
         p.canChooseFiles = false
         p.canCreateDirectories = true
         p.allowsMultipleSelection = false
-        p.prompt = "Seç"
+        p.prompt = L("Seç")
         p.directoryURL = start
         NSApp.activate(ignoringOtherApps: true)
         return p.runModal() == .OK ? p.url : nil
@@ -598,38 +598,38 @@ struct SettingsView: View {
     @ViewBuilder private var permissionsTab: some View {
         let ax = model.axTrusted
         let sc = model.screenTrusted
-        Card(title: "Durum", icon: "checkmark.shield") {
+        Card(title: L("Durum"), icon: "checkmark.shield") {
             HStack(spacing: 10) {
                 Image(systemName: ax ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .font(.system(size: 22))
                     .foregroundStyle(ax ? Color.green : Color.orange)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(ax ? "Kısayollar çalışıyor" : "Kısayollar için izin gerekli")
+                    Text(ax ? L("Kısayollar çalışıyor") : L("Kısayollar için izin gerekli"))
                         .font(.system(size: 14, weight: .semibold))
-                    Text(ax ? "⌘Tab, ⌥Tab ve ses kısayolu aktif." : "Erişilebilirlik izni verilene kadar hiçbir kısayol çalışmaz.")
+                    Text(ax ? L("⌘Tab, ⌥Tab ve ses kısayolu aktif.") : L("Erişilebilirlik izni verilene kadar hiçbir kısayol çalışmaz."))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.white.opacity(0.6))
                 }
                 Spacer()
-                Button { model.refresh() } label: { Label("Yenile", systemImage: "arrow.clockwise") }
+                Button { model.refresh() } label: { Label(L("Yenile"), systemImage: "arrow.clockwise") }
             }
         }
-        Card(title: "Gerekli izinler", icon: "lock.shield") {
-            PermissionRow(title: "Erişilebilirlik",
-                          detail: "⌘Tab, ⌥Tab ve ses kısayolu (⌘⇧ / ⌘⇪) için. Pencerelere geçmek, kapatmak, küçültmek için de kullanılır.",
+        Card(title: L("Gerekli izinler"), icon: "lock.shield") {
+            PermissionRow(title: L("Erişilebilirlik"),
+                          detail: L("⌘Tab, ⌥Tab ve ses kısayolu (⌘⇧ / ⌘⇪) için. Pencerelere geçmek, kapatmak, küçültmek için de kullanılır."),
                           granted: ax) { SettingsModel.open("Privacy_Accessibility") }
             Divider().opacity(0.4)
-            PermissionRow(title: "Ekran Kaydı",
+            PermissionRow(title: L("Ekran Kaydı"),
                           detail: (model.anyPreviews || CaptureSettings.enabled)
-                            ? "Pencere önizlemeleri, ekran görüntüsü ve ekran kaydı için. İzni verdikten sonra uygulamayı bir kez kapatıp aç."
-                            : "Şu an gerekmiyor: önizlemeler ve ekran çekimi kapalı.",
+                            ? L("Pencere önizlemeleri, ekran görüntüsü ve ekran kaydı için. İzni verdikten sonra uygulamayı bir kez kapatıp aç.")
+                            : L("Şu an gerekmiyor: önizlemeler ve ekran çekimi kapalı."),
                           granted: sc) { SettingsModel.open("Privacy_ScreenCapture") }
         }
-        Card(title: "Bilgi", icon: "info.circle") {
+        Card(title: L("Bilgi"), icon: "info.circle") {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Giriş İzleme izni gerekmez (eski AudioHop'tan kalmışsa kapatabilirsin).", systemImage: "keyboard")
-                Label("Yeniden derledikten sonra izin açık görünüp çalışmıyorsa: listeden AudioTab'ı – ile kaldırıp + ile tekrar ekle.", systemImage: "arrow.triangle.2.circlepath")
-                Label("Hiçbir şey kaydedilmez, diske yazılmaz, internete gönderilmez.", systemImage: "hand.raised.fill")
+                Label(L("Giriş İzleme izni gerekmez (eski AudioHop'tan kalmışsa kapatabilirsin)."), systemImage: "keyboard")
+                Label(L("Yeniden derledikten sonra izin açık görünüp çalışmıyorsa: listeden AudioTab'ı – ile kaldırıp + ile tekrar ekle."), systemImage: "arrow.triangle.2.circlepath")
+                Label(L("Hiçbir şey kaydedilmez, diske yazılmaz, internete gönderilmez."), systemImage: "hand.raised.fill")
             }
             .font(.system(size: 11.5))
             .foregroundStyle(.white.opacity(0.65))
@@ -640,30 +640,30 @@ struct SettingsView: View {
 
     private var updateStatus: (String, String, Color) {
         switch updater.state {
-        case .idle: return ("Henüz denetlenmedi", "clock", .white.opacity(0.6))
-        case .checking: return ("Denetleniyor…", "arrow.triangle.2.circlepath", .white.opacity(0.8))
-        case .upToDate: return ("Güncel", "checkmark.circle.fill", .green)
-        case .available(let v): return ("Yeni sürüm var: \(v)", "arrow.down.circle.fill", .accentColor)
-        case .downloading: return ("İndiriliyor…", "arrow.down.circle", .white.opacity(0.8))
-        case .installing: return ("Yükleniyor, uygulama yeniden açılacak…", "gearshape.2", .white.opacity(0.8))
+        case .idle: return (L("Henüz denetlenmedi"), "clock", .white.opacity(0.6))
+        case .checking: return (L("Denetleniyor…"), "arrow.triangle.2.circlepath", .white.opacity(0.8))
+        case .upToDate: return (L("Güncel"), "checkmark.circle.fill", .green)
+        case .available(let v): return (L("Yeni sürüm var: %@", v), "arrow.down.circle.fill", .accentColor)
+        case .downloading: return (L("İndiriliyor…"), "arrow.down.circle", .white.opacity(0.8))
+        case .installing: return (L("Yükleniyor, uygulama yeniden açılacak…"), "gearshape.2", .white.opacity(0.8))
         case .failed(let m): return (m, "exclamationmark.triangle.fill", .orange)
         }
     }
 
     @ViewBuilder private var updateCard: some View {
         let status = updateStatus
-        Card(title: "Güncellemeler", icon: "arrow.down.app") {
-            Row("Sürüm \(updater.currentVersion)", nil) {
+        Card(title: L("Güncellemeler"), icon: "arrow.down.app") {
+            Row(L("Sürüm %@", updater.currentVersion), nil) {
                 HStack(spacing: 10) {
                     Label(status.0, systemImage: status.1)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(status.2)
                         .lineLimit(2)
                     if updater.updateAvailable {
-                        Button("Yükle ve yeniden aç") { model.onInstallUpdate() }
+                        Button(L("Yükle ve yeniden aç")) { model.onInstallUpdate() }
                             .keyboardShortcut(.defaultAction)
                     } else {
-                        Button("Şimdi denetle") { updater.check(userInitiated: true) }
+                        Button(L("Şimdi denetle")) { updater.check(userInitiated: true) }
                             .disabled(updater.state == .checking || updater.state == .downloading || updater.state == .installing)
                     }
                 }
@@ -678,15 +678,15 @@ struct SettingsView: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.05)))
             }
             Divider().opacity(0.4)
-            ToggleRow("Otomatik denetle", "Açılışta ve 6 saatte bir GitHub'a bakar; yeni sürüm olunca haber verir",
+            ToggleRow(L("Otomatik denetle"), L("Açılışta ve 6 saatte bir GitHub'a bakar; yeni sürüm olunca haber verir"),
                       isOn: model.bind({ updater.autoCheck }, { updater.autoCheck = $0 }))
             HStack {
                 if let last = updater.lastCheck {
-                    Text("Son denetim: \(last.formatted(date: .omitted, time: .shortened))")
+                    Text(L("Son denetim: %@", last.formatted(date: .omitted, time: .shortened)))
                         .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
                 }
                 Spacer()
-                Button("GitHub'da aç") { NSWorkspace.shared.open(UpdateConfig.releasesPage) }
+                Button(L("GitHub'da aç")) { NSWorkspace.shared.open(UpdateConfig.releasesPage) }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.accentColor)
                     .font(.system(size: 11.5, weight: .medium))
@@ -697,11 +697,27 @@ struct SettingsView: View {
     // MARK: Genel
 
     @ViewBuilder private var generalTab: some View {
-        Card(title: "Başlangıç", icon: "power") {
-            ToggleRow("Girişte başlat", "Uygulama /Applications klasöründe olmalı", isOn: model.loginBinding)
+        Card(title: "Language · Dil", icon: "globe") {
+            Row(L("Uygulamanın dili"), AppLanguage.selected != AppLanguage.active ? L("Dil değişikliği için AudioTab yeniden başlatılır") : nil) {
+                HStack(spacing: 10) {
+                    Picker("", selection: model.bind({ AppLanguage.selected }, { AppLanguage.selected = $0 })) {
+                        ForEach(AppLanguage.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 180)
+                    if AppLanguage.selected != AppLanguage.active {
+                        Button(L("Yeniden başlat")) { Updater.relaunchApp() }
+                            .keyboardShortcut(.defaultAction)
+                    }
+                }
+            }
+        }
+        Card(title: L("Başlangıç"), icon: "power") {
+            ToggleRow(L("Girişte başlat"), L("Uygulama /Applications klasöründe olmalı"), isOn: model.loginBinding)
         }
         updateCard
-        Card(title: "Hakkında", icon: "info.circle") {
+        Card(title: L("Hakkında"), icon: "info.circle") {
             Text("AudioTab \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")  ·  GlassTab + AudioHop + ScreenHub")
                 .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(0.7))
@@ -782,11 +798,11 @@ struct PermissionRow: View {
     var body: some View {
         Row(title, detail) {
             HStack(spacing: 10) {
-                Label(granted ? "Verildi" : "Verilmedi",
+                Label(granted ? L("Verildi") : L("Verilmedi"),
                       systemImage: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(granted ? Color.green : Color.orange)
-                Button("Ayarları aç", action: open)
+                Button(L("Ayarları aç"), action: open)
             }
         }
     }

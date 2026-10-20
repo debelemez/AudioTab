@@ -2,187 +2,177 @@
 
 # AudioTab
 
-**Mac'in menü çubuğunda duran tek bir küçük uygulama:**<br>
-cam görünümlü ⌘Tab · tek tuşla ses çıkışı · ekran bölme · ekran görüntüsü ve MP4 kayıt
+**One tiny app in your Mac's menu bar:**<br>
+a glass ⌘Tab · one-key sound output switching · window tiling · screenshots and MP4 recording
 
-[**İndir**](https://github.com/debelemez/AudioTab/releases/latest) · [Kurulum](#kurulum) · [Kısayollar](#tüm-kısayollar) · [English](#english)
+[**Download**](https://github.com/debelemez/AudioTab/releases/latest) · [Install](#install) · [Shortcuts](#all-shortcuts) · [**Türkçe**](README.tr.md)
 
-<img src="docs/images/switcher.jpg" alt="AudioTab ⌘Tab pencere değiştirici" width="900">
+<img src="docs/images/switcher.jpg" alt="AudioTab ⌘Tab window switcher" width="900">
 
-<sub>Görseller uygulamanın arayüzünü temsil eder.</sub>
+<sub>Images illustrate the app's interface.</sub>
 
 </div>
 
 ---
 
-## Neler yapıyor?
+## What it does
 
 | | |
 |---|---|
-| **⌘Tab, ama pencere pencere** | Uygulamalar değil, pencereler görünür. Büyük önizlemeler, Chrome'un tüm profil pencereleri, diğer masaüstlerindekiler dahil. Karttaki kırmızı noktayla kapat, yanındaki düğmeyle ekranın bir bölmesine taşı. |
-| **Tek tuşla ses çıkışı** | ⌘ basılıyken ⇧'ye dokun: kulaklık → hoparlör → monitör. Çıkardığın kulaklığı hatırlar; takınca yine listede. eqMac ile de çalışır. |
-| **Uygulamaya göre ses** | Müzik hoparlörden, toplantı kulaklıktan. Uygulama öne gelince ses kendiliğinden doğru cihaza geçer. |
-| **Ekranı böl (⌘<)** | Ekranı kaça böleceğini seç, sonra hangi pencere hangi bölmeye. Çift ve üç monitörde hangisinde olduğunu bilir ya da sorar. |
-| **Ekran görüntüsü ve kayıt** | ⌘⇧3 sadece bulunduğun monitörü çeker. Kaydırmalı uzun ekran görüntüsü alır. ⌘⇧5 ile ekranı **MP4 / H.264** olarak kaydeder. Kayıt göstergesi sadece sana görünür. |
-| **Kendini günceller** | Yeni sürüm çıkınca menüde "Güncelleme var" görünür. Tek tıkla güncellenir, ayarlar ve izinler korunur. |
+| **⌘Tab, window by window** | You see windows, not just apps, with big previews. Every Chrome profile window and every window on other Spaces is included. Close a window with the red dot on its card, or move it to part of the screen with the button next to it. |
+| **One-key sound output** | Hold ⌘ and tap ⇧: headphones → speakers → monitor. It remembers headphones you unplug and puts them back in the list when you plug them in. Works with eqMac. |
+| **Sound per app** | Music on the speakers, meetings on the headphones. When an app comes to the front, sound switches to its device automatically. |
+| **Split screen (⌘<)** | Choose how to split the screen, then which window goes where. With two or three displays it knows which one you're on, or asks. |
+| **Screenshots and recording** | ⌘⇧3 captures only the display you're on. Scrolling screenshots for long pages. ⌘⇧5 records the screen as **MP4 / H.264**, with a recording indicator only you can see. |
+| **Updates itself** | When a new version is out, the menu shows "Update available". One click to update; settings and permissions are kept. |
 
-Boştayken hiçbir şey yapmaz: timer yok, arka planda tarama yok, internete sadece güncelleme denetimi için çıkar. Native Swift, Electron değil.
+It does nothing while idle: no timers, no background polling. It only goes online to check for updates. Native Swift, not Electron.
 
 ---
 
-## ⌘Tab: pencere değiştirici
+## ⌘Tab window switcher
 
-<img src="docs/images/switcher-list.jpg" alt="Liste görünümü" width="900">
+<img src="docs/images/switcher-list.jpg" alt="List view" width="900">
 
-- **Izgara** (büyük önizlemeler) ya da **Liste** görünümü. ⌘Tab ve ⌥Tab için ayrı ayrı ayarlanır.
-- Seçili kart vurgu renginde çerçeveyle belirgin olur.
-- Kartın sağ üstünde **kırmızı nokta** pencereyi kapatır, yanındaki **bölme düğmesi** pencereyi ekranın bir bölmesine taşır.
-- Uygulamaya ses cihazı atadıysan kartta küçük bir rozet olarak görünür; panel açıkken **S** ile değiştirilir.
-- Chrome, Safari, Arc, Brave, Edge, Firefox gibi tarayıcıların **tüm pencereleri** her zaman listede olur: başka profiller, başka masaüstleri ve tam ekrandakiler dahil.
-- Boşluğa tıklayınca panel kapanır.
+- **Grid** view with big previews, or **List** view. Set separately for ⌘Tab and ⌥Tab.
+- The selected card stands out with an accent-colored border.
+- The **red dot** at the top right of a card closes the window. The **split button** next to it moves the window to part of the screen.
+- If you've assigned a sound device to an app, it shows as a small badge on the card. Change it with **S** while the panel is open.
+- **Every window** of your browsers is always listed: Chrome, Safari, Arc, Brave, Edge, Firefox and more. That includes other profiles, other Spaces and full-screen windows.
+- Click an empty spot to close the panel.
 
-## Ses çıkışı: ⌘⇧
+## Sound output: ⌘⇧
 
-<img src="docs/images/audio.jpg" alt="Ses çıkışı paneli" width="900">
+<img src="docs/images/audio.jpg" alt="Sound output panel" width="900">
 
-- **⌘ basılıyken ⇧'ye dokun.** Ya doğrudan sıradaki cihaza geçer ya da bu paneli açar; ⇧'ye tekrar dokundukça aşağı iner, ⌘'yi bırakınca seçer (⌘Tab gibi).
-- Hangi cihazların döngüye gireceğini, hangilerinin listede görüneceğini sen seçersin.
-- Çıkarılan cihazlar "bağlı değil · hatırlanıyor" olarak kalır. Tekrar takınca ayarları geri gelir.
-- ⌘⇧4, ⌘⇧Z gibi kısayolları bozmaz; araya başka tuş girerse tetiklenmez. İstersen ⌘ + Caps Lock da kullanılabilir.
+- **Hold ⌘ and tap ⇧.** It either switches straight to the next device or opens this panel. Tap ⇧ again to move down, release ⌘ to select (just like ⌘Tab).
+- You choose which devices are in the cycle and which appear in the list.
+- Unplugged devices stay as "Not connected · remembered". Plug them back in and their settings return.
+- It doesn't interfere with shortcuts like ⌘⇧4 or ⌘⇧Z: if another key is pressed in between, it doesn't fire. ⌘ + Caps Lock is available as an alternative.
 
-## Ekranı böl: ⌘<
+## Split screen: ⌘<
 
-<img src="docs/images/tiling.jpg" alt="Ekran bölme" width="900">
+<img src="docs/images/tiling.jpg" alt="Split screen" width="900">
 
-1. **⌘<**'ye bas. Türkçe klavyede bu tuş sol ⇧'nin yanında.
-2. Düzeni seç: tam, 2 dikey, 2 yatay, 3 dikey, ⅓+⅔, ⅔+⅓, ½+¼¼, 2×2, 3×2.
-3. Bölmeler sırayla vurgulanır. Her biri için listeden pencereyi seç; klavye ve fare ikisi de çalışır.
+1. Press **⌘<**. This is the key next to the left ⇧ on ISO keyboards, such as Turkish and German.
+2. Choose a layout: full, 2 columns, 2 rows, 3 columns, ⅓+⅔, ⅔+⅓, ½+¼¼, 2×2, 3×2.
+3. Zones light up one by one. Pick a window for each from the list, with the keyboard or the mouse.
 
-Birden fazla monitörde her ekranda büyük bir numara çıkar. Hedef, farenin olduğu monitördür; **Tab** ile değiştirebilirsin ya da her seferinde sorsun diye ayarlayabilirsin.
+With several displays, a big number appears on each screen. The target is the display under the mouse. Change it with **Tab**, or set it to ask every time.
 
-## Ekran görüntüsü ve kayıt
+## Screenshots and recording
 
-<img src="docs/images/capture.jpg" alt="Çekim paleti, kayıt göstergesi ve önizleme" width="900">
+<img src="docs/images/capture.jpg" alt="Capture palette, recording indicator and preview" width="900">
 
-| Kısayol | Ne yapar |
+| Shortcut | What it does |
 |---|---|
-| **⌘⇧3** | Sadece **bulunduğun monitörün** görüntüsünü alır |
-| **⌘⇧4** | Alan seçimi (macOS'un seçicisi, Space ile pencere) |
-| **⌘⇧6** | **Kaydırmalı görüntü**: alanı seç, sayfa kendiliğinden kayar, tek uzun PNG olur. Sabit menüler tekrar etmez. |
-| **⌘⇧5** | Çekim paleti: monitör · alan · kaydırmalı · **monitörü kaydet** · **alanı kaydet** |
+| **⌘⇧3** | Captures **only the display you're on** |
+| **⌘⇧4** | Area selection (the macOS picker; Space for a window) |
+| **⌘⇧6** | **Scrolling screenshot**: select an area, the page scrolls by itself and becomes one long PNG. Sticky headers aren't repeated. |
+| **⌘⇧5** | Capture palette: display · area · scrolling · **record display** · **record area** |
 
-- Video **MP4 / H.264** olarak kaydedilir, 30 ya da 60 fps. "Yüksek" ve "En yüksek" kalite seçenekleri var; sistem sesi ve imleç isteğe bağlı.
-- Kayıt sırasında sağ üstte **kırmızı nokta ve süre** görünür. Sadece sen görürsün, kayda girmez. Tıklayınca kayıt durur.
-- Çekimden sonra sağ altta bir **önizleme** çıkar. Tıklayınca dosya Finder'da seçili olarak açılır.
-- Her tür için ayrı kayıt klasörü seçilebilir. Hepsini tek anahtarla kapatırsan macOS'un kendi kısayolları geri gelir.
+- Video is recorded as **MP4 / H.264**, at 30 or 60 fps. There are "High" and "Maximum" quality options; system audio and the cursor are optional.
+- While recording, a **red dot and timer** appear at the top right. Only you can see it; it isn't recorded. Click it to stop.
+- After a capture, a **preview** appears at the bottom right. Click it to open the file selected in Finder.
+- You can pick a separate save folder for each type. Turn everything off with one switch and the macOS shortcuts come back.
 
-## Ayarlar
+## Settings
 
-<img src="docs/images/settings.jpg" alt="Ayarlar penceresi" width="900">
+<img src="docs/images/settings.jpg" alt="Settings window" width="900">
 
-Menü çubuğu ikonu (o an çalan ses cihazının simgesi) › **Ayarlar…** (⌘,). Beş sekme var:
+Click the menu bar icon (it shows the current sound device) › **Settings…** (⌘,). There are five tabs:
 
-- **Ses:** kısayol, cihaz tablosu, uygulamaya göre ses cihazı.
-- **Pencereler:** ⌘Tab ve ⌥Tab ayarları, liste ya da ızgara, önizlemeler, pencereleri her zaman bul.
-- **Ekran:** ekran bölme, ekran görüntüsü ve kayıt, kayıt klasörleri, video kalitesi.
-- **İzinler:** hangi iznin verildiği ve ne işe yaradığı.
-- **Genel:** girişte başlat, güncellemeler.
+- **Sound:** shortcut, device table, sound device per app.
+- **Windows:** ⌘Tab and ⌥Tab settings, list or grid, previews, always find windows.
+- **Screen:** split screen, screenshots and recording, save folders, video quality.
+- **Permissions:** which permissions are granted and what each is for.
+- **General:** language (English / Türkçe), launch at login, updates.
 
 ---
 
-## Kurulum
+## Install
 
-macOS 13 (Ventura) ve üzeri, Apple Silicon ve Intel. Terminal'e yapıştır:
+macOS 13 (Ventura) or later, Apple Silicon and Intel. Paste this into Terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/debelemez/AudioTab/main/install.sh | bash
 ```
 
-Ya da [Releases](https://github.com/debelemez/AudioTab/releases/latest) sayfasından `AudioTab.zip`'i indirip `AudioTab.app`'i **Uygulamalar** klasörüne sürükle.
+Or download `AudioTab.zip` from [Releases](https://github.com/debelemez/AudioTab/releases/latest) and drag `AudioTab.app` into your **Applications** folder.
 
-**İlk açılışta** macOS iki izin ister. Sistem Ayarları › Gizlilik ve Güvenlik altından AudioTab'ı aç:
+**On first launch** macOS asks for two permissions. Turn AudioTab on under System Settings › Privacy & Security:
 
-| İzin | Ne için |
+| Permission | What for |
 |---|---|
-| **Erişilebilirlik** | ⌘Tab, ses kısayolu, ekran bölme ve kısayolların hepsi |
-| **Ekran Kaydı** | Pencere önizlemeleri, ekran görüntüsü ve kayıt |
+| **Accessibility** | ⌘Tab, the sound shortcut, split screen and all shortcuts |
+| **Screen Recording** | Window previews, screenshots and recording |
 
-Ekran Kaydı izninden sonra uygulamayı bir kez kapatıp aç. Güncellemelerden sonra izinleri tekrar vermen gerekmez.
+After granting Screen Recording, quit and reopen the app once. You won't need to grant permissions again after updates.
+
+The app starts in English. To switch to Turkish, go to Settings › General › Language and choose Türkçe.
 
 <details>
-<summary><b>Uygulama açılmıyor: "geliştirici doğrulanamadı" uyarısı</b></summary>
+<summary><b>The app won't open: "developer cannot be verified"</b></summary>
 
-AudioTab ücretsiz ve Apple'ın ücretli geliştirici programına kayıtlı değil. `install.sh` ile kurarsan bu uyarı çıkmaz. Zip'i tarayıcıdan indirdiysen bir kere şunu yap: AudioTab'ı açmayı dene, sonra **Sistem Ayarları › Gizlilik ve Güvenlik**'in en altındaki **Yine de Aç** düğmesine bas. Ya da Terminal'de `xattr -dr com.apple.quarantine /Applications/AudioTab.app` çalıştır.
+AudioTab is free and isn't enrolled in Apple's paid developer program. If you install with `install.sh`, you won't see this warning. If you downloaded the zip in a browser, do this once: try to open AudioTab, then click **Open Anyway** at the bottom of **System Settings › Privacy & Security**. Or run `xattr -dr com.apple.quarantine /Applications/AudioTab.app` in Terminal.
 </details>
 
 <details>
-<summary><b>GlassTab ya da AudioHop kullanıyordum</b></summary>
+<summary><b>I was using GlassTab or AudioHop</b></summary>
 
-AudioTab ikisinin birleşimi, ayarların ilk açılışta otomatik taşınır. Eski uygulamaları kapatıp çöpe at ki aynı kısayolları yakalamaya çalışmasınlar. Eski AudioHop'un istediği Giriş İzleme iznine artık gerek yok.
+AudioTab combines both, and your settings carry over automatically on first launch. Quit the old apps and move them to the Trash so they don't try to grab the same shortcuts. The Input Monitoring permission the old AudioHop needed is no longer required.
 </details>
 
 ---
 
-## Tüm kısayollar
+## All shortcuts
 
-| Kısayol | İş |
+| Shortcut | Action |
 |---|---|
-| **⌘Tab** / **⌥Tab** | Pencere değiştirici (Tab ileri, ⇧Tab geri, ⌘'yi bırak → geç) |
-| ⌘Tab açıkken **W · M · H · Q** | Kapat · Küçült · Gizle · Çık |
-| ⌘Tab açıkken **S** | Uygulamanın ses cihazını değiştir |
-| **⌘ + ⇧'ye dokun** | Ses çıkışı (sıradaki cihaz ya da liste) |
-| **⌘<** | Ekranı böl |
-| **⌘⇧3** | Bulunduğun monitörün görüntüsü |
-| **⌘⇧4** | Alan görüntüsü |
-| **⌘⇧5** | Çekim paleti / kaydı durdur |
-| **⌘⇧6** | Kaydırmalı görüntü |
+| **⌘Tab** / **⌥Tab** | Window switcher (Tab forward, ⇧Tab back, release ⌘ to switch) |
+| **W · M · H · Q** in ⌘Tab | Close · Minimize · Hide · Quit |
+| **S** in ⌘Tab | Change the app's sound device |
+| **Hold ⌘, tap ⇧** | Sound output (next device or list) |
+| **⌘<** | Split screen |
+| **⌘⇧3** | Screenshot of the display you're on |
+| **⌘⇧4** | Area screenshot |
+| **⌘⇧5** | Capture palette / stop recording |
+| **⌘⇧6** | Scrolling screenshot |
 
-Her kısayol Ayarlar'dan tek tek kapatılabilir; kapatılınca macOS'un kendisi geri gelir.
+Each shortcut can be turned off in Settings; when it's off, the macOS shortcut comes back.
 
-## Gizlilik
+## Privacy
 
-- Kullanım verisi toplanmaz, hiçbir şey bir yere gönderilmez. İnternete sadece GitHub'da yeni sürüm var mı diye bakmak için çıkar; bu da kapatılabilir.
-- Pencere önizlemeleri sadece ⌘Tab basılıyken, pencere başına tek kare olarak alınır ve diske yazılmaz.
-- Kod tamamen açık; ne yaptığını [Sources](Sources) klasöründen görebilirsin.
+- No usage data is collected and nothing is sent anywhere. The app only goes online to check GitHub for a new version, and you can turn that off.
+- Window previews are taken only while ⌘Tab is held, one frame per window, and are never written to disk.
+- The code is fully open: see the [Sources](Sources) folder for what it does.
 
 ---
 
-## Geliştirici notları
+## Developer notes
 
 <details>
-<summary>Kaynaktan derleme, sürüm yayınlama, imza</summary>
+<summary>Building from source, releasing, signing</summary>
 
-**Derleme** (Xcode veya Command Line Tools gerekir):
+**Build** (requires Xcode or the Command Line Tools):
 
 ```bash
-./build.sh --install          # bu Mac için derle ve kur
+./build.sh --install          # build for this Mac and install
 ./build.sh --universal        # Apple Silicon + Intel
 ```
 
-**Yeni sürüm:** `VERSION` dosyasındaki numarayı artırıp `main`'e gönder:
+**New release:** bump the number in `VERSION` and push to `main`:
 
 ```bash
-echo 2.3.0 > VERSION
-git commit -am "2.3.0" && git push
+echo 2.4.0 > VERSION
+git commit -am "2.4.0" && git push
 ```
 
-GitHub Actions Mac'te derler, imzalar ve Releases'e `AudioTab.zip` koyar. Uygulamalar 6 saat içinde ya da "Şimdi denetle" ile hemen yeni sürümü görür.
+GitHub Actions builds on a Mac, signs, and puts `AudioTab.zip` on Releases. Installed apps see the new version within 6 hours, or right away with "Check Now".
 
-**İmza:** Sürümler hep aynı sertifikayla imzalanır. Açık sertifika `signing/AudioTab.pem`'de, özel anahtar repo gizli değişkenlerinde (`CERT_P12`, `CERT_PASSWORD`). macOS izinleri imzaya bağlı olduğu için güncellemelerden sonra izinler korunur. Güncelleyici de sadece bu sertifikayla imzalanmış sürümleri yükler.
+**Signing:** Every release is signed with the same certificate. The public certificate is in `signing/AudioTab.pem`; the private key is in the repository secrets (`CERT_P12`, `CERT_PASSWORD`). macOS ties permissions to the signature, so they're kept across updates. The updater only installs versions signed with this certificate.
 
-**Yapı:** `Switcher.swift` (⌘Tab), `AudioKeys.swift` + `DeviceStore.swift` + `CoreAudioHelper.swift` (ses), `Tiling.swift` (ekran bölme), `Capture.swift` (ekran görüntüsü ve kayıt), `Updater.swift` (güncelleme), `Settings.swift`, `App.swift`. Tek bir event tap'i tüm kısayollar paylaşır.
+**Localization:** UI strings are written in Turkish in the code and wrapped with `L("…")`. English translations are in `Sources/Localization.swift`.
+
+**Layout:** `Switcher.swift` (⌘Tab), `AudioKeys.swift` + `DeviceStore.swift` + `CoreAudioHelper.swift` (sound), `Tiling.swift` (split screen), `Capture.swift` (screenshots and recording), `Updater.swift` (updates), `Settings.swift`, `App.swift`. All shortcuts share a single event tap.
 </details>
-
----
-
-## English
-
-**AudioTab** is a tiny macOS menu bar app that bundles:
-
-- **A glassmorphism ⌘Tab / ⌥Tab window switcher.** Big previews, grid or list view, close and tile buttons on each card. It always shows every browser window, including other Chrome profiles, other Spaces and full-screen windows.
-- **One-key audio output switching.** Tap ⇧ while holding ⌘. It remembers unplugged devices and can switch the output automatically per app.
-- **Window tiling (⌘<).** Pick a layout, then assign windows to zones. It's aware of multiple monitors.
-- **Screenshots and recording.** ⌘⇧3 captures only the monitor you're on. Scrolling screenshots, and screen recording to **MP4 / H.264** with a recording indicator that only you can see.
-- **Self-updating from GitHub Releases.** Permissions are kept across updates.
-
-Install: `curl -fsSL https://raw.githubusercontent.com/debelemez/AudioTab/main/install.sh | bash` · macOS 13+ · Apple Silicon & Intel. The UI is in Turkish.
