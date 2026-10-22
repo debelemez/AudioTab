@@ -16,6 +16,16 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.13", items: [
+            ("Sürümler sekmesi serilere ayrıldı (1.0, 2.0, 2.1, 2.2, 2.3); bir seriyi açınca alt sürümleri ve geçiş düğmeleri çıkıyor",
+             "The Versions tab is grouped into series (1.0, 2.0, 2.1, 2.2, 2.3); open one to see its versions and switch to any of them"),
+            ("Sürüm kutularında yazılar artık dışarı taşmıyor",
+             "Text no longer spills out of the version boxes"),
+            ("Menüde \"Güncellemeleri denetle…\": sonuç küçük bir pencerede, yeni sürüm varsa tek tıkla yükle",
+             "\"Check for updates…\" in the menu shows the result in a small window; install a new version in one click"),
+            ("Yeni sürüm çıkınca Bildirim Merkezi'ne bildirim düşüyor; tıklayınca güncelleme penceresi açılıyor",
+             "A notification appears when a new version is out; click it to open the update window"),
+        ]),
         ChangelogEntry(version: "2.3.12", items: [
             ("Profil rozeti tam okunuyor; Chrome'da profile verdiğin ad yazıyor (aynı ada sahip profiller e-postayla ayrılır)",
              "The profile badge is no longer cut off and shows the name you gave the Chrome profile (profiles with the same name are told apart by email)"),

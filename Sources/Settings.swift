@@ -947,93 +947,153 @@ struct SettingsView: View {
         }
         .onAppear { if updater.releases.isEmpty { updater.fetchReleases() } }
 
-        // Eşit boyda kutular, iki sütun. Uzun değişiklik listesi olan kutu düğmeyle büyür.
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12, alignment: .top),
-                            GridItem(.flexible(), spacing: 12, alignment: .top)],
-                  alignment: .leading, spacing: 12) {
-            ForEach(versionRows) { row in
-                versionCard(row)
+        // Sürüm serileri (1.0, 2.0, 2.1, 2.2, 2.3…): eşit boyda kutular, açınca alt sürümler
+        VStack(spacing: 12) {
+            ForEach(versionSeries) { s in
+                seriesBox(s)
             }
         }
     }
 
-    private static let versionBoxH: CGFloat = 178
-
-    /// Kapalı kutuya sığmayacak kadar uzun mu (yaklaşık: satır başına ~42 karakter, 4 satır yer)
-    private func isLong(_ row: VersionRow) -> Bool {
-        row.lines.reduce(0) { $0 + max(1, Int(ceil(Double($1.count) / 42))) } > 4
+    private struct VersionSeries: Identifiable {
+        let id: String            // "2.3"
+        let versions: [VersionRow]  // yeniden eskiye
+        var preGitHub: Bool { versions.allSatisfy(\.preGitHub) }
+        var lines: [String] { versions.flatMap(\.lines) }
     }
 
-    @ViewBuilder private func versionCard(_ row: VersionRow) -> some View {
-        let isCurrent = row.version == updater.currentVersion
-        let long = isLong(row)
-        let open = expandedVersions.contains(row.version)
+    /// "2.3.12" → "2.3", "2.1" → "2.1"
+    private static func seriesKey(_ v: String) -> String {
+        let p = v.split(separator: ".")
+        return p.count >= 2 ? "\(p[0]).\(p[1])" : v
+    }
+
+    private var versionSeries: [VersionSeries] {
+        var order: [String] = []
+        var map: [String: [VersionRow]] = [:]
+        for r in versionRows {   // zaten yeniden eskiye
+            let k = Self.seriesKey(r.version)
+            if map[k] == nil { order.append(k) }
+            map[k, default: []].append(r)
+        }
+        return order.map { VersionSeries(id: $0, versions: map[$0] ?? []) }
+    }
+
+    private static let seriesBoxH: CGFloat = 158
+
+    @ViewBuilder private func seriesBox(_ s: VersionSeries) -> some View {
+        let current = updater.currentVersion
+        let containsCurrent = s.versions.contains { $0.version == current }
+        let open = expandedVersions.contains(s.id)
+        let multi = s.versions.count > 1
+        let expandable = multi || s.lines.count > 3
+        let dates = s.versions.compactMap { $0.release?.date }
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 7) {
-                Text(row.version).font(.system(size: 17, weight: .heavy))
-                if isCurrent {
-                    Text(L("Kullanılan"))
+            HStack(spacing: 8) {
+                Text("AudioTab \(s.id)").font(.system(size: 17, weight: .heavy))
+                if containsCurrent {
+                    Text(multi ? L("Kullanılan: %@", current) : L("Kullanılan"))
                         .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(Capsule().fill(Color.green.opacity(0.3)))
                 }
                 Spacer(minLength: 0)
-                if long {
+                if expandable {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            if open { expandedVersions.remove(row.version) } else { expandedVersions.insert(row.version) }
+                            if open { expandedVersions.remove(s.id) } else { expandedVersions.insert(s.id) }
                         }
                     } label: {
-                        Image(systemName: open ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.white.opacity(0.7))
+                        HStack(spacing: 4) {
+                            Text(open ? L("Küçült") : (multi ? L("%@ sürüm", "\(s.versions.count)") : L("Tümünü göster")))
+                                .font(.system(size: 11, weight: .semibold))
+                            Image(systemName: open ? "chevron.up" : "chevron.down").font(.system(size: 10, weight: .bold))
+                        }
+                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .background(Capsule().fill(.white.opacity(0.12)))
                     }
                     .buttonStyle(.plain)
-                    .help(open ? L("Küçült") : L("Tümünü göster"))
                 }
             }
             Group {
-                if row.preGitHub {
+                if s.preGitHub {
                     Text(L("GitHub öncesi"))
-                } else if let d = row.release?.date {
-                    Text(d.formatted(date: .abbreviated, time: .omitted))
+                } else if let lo = dates.min(), let hi = dates.max() {
+                    Text(Calendar.current.isDate(lo, inSameDayAs: hi)
+                         ? lo.formatted(date: .abbreviated, time: .omitted)
+                         : "\(lo.formatted(date: .abbreviated, time: .omitted)) – \(hi.formatted(date: .abbreviated, time: .omitted))")
                 } else {
                     Text(" ")
                 }
             }
             .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
 
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(row.lines.enumerated()), id: \.offset) { _, line in
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("•").foregroundStyle(.white.opacity(0.45))
-                        Text(line).fixedSize(horizontal: false, vertical: true)
-                    }
+            if open && multi {
+                // Alt sürümler: her biri kendi notları ve geçiş düğmesiyle
+                VStack(spacing: 8) {
+                    ForEach(s.versions) { v in subVersionRow(v) }
                 }
-            }
-            .font(.system(size: 11.5))
-            .foregroundStyle(.white.opacity(0.78))
-            .frame(maxWidth: .infinity, maxHeight: open ? nil : .infinity, alignment: .topLeading)
-            .clipped()
-            .mask(LinearGradient(stops: [.init(color: .black, location: 0),
-                                         .init(color: .black, location: (long && !open) ? 0.72 : 1),
-                                         .init(color: .black.opacity((long && !open) ? 0 : 1), location: 1)],
-                                 startPoint: .top, endPoint: .bottom))
-
-            if let r = row.release, !isCurrent, !row.preGitHub {
-                let newer = Updater.isNewer(r.version, than: updater.currentVersion)
-                Button(newer ? L("Yükle") : L("Bu sürüme dön")) { confirmRelease = r }
-                    .disabled(installBusy)
-                    .controlSize(.small)
+            } else {
+                bulletList(s.lines)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(maxHeight: open ? nil : .infinity, alignment: .topLeading)
+                    .clipped()
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0),
+                                                 .init(color: .black, location: (expandable && !open) ? 0.65 : 1),
+                                                 .init(color: .black.opacity((expandable && !open) ? 0 : 1), location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .frame(height: open ? nil : Self.versionBoxH, alignment: .top)
+        .frame(height: open ? nil : Self.seriesBoxH, alignment: .top)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))   // içerik kutudan taşmasın
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(.white.opacity(isCurrent ? 0.10 : 0.06)))
+            .fill(.white.opacity(containsCurrent ? 0.10 : 0.06)))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .strokeBorder(isCurrent ? Color.green.opacity(0.45) : .white.opacity(0.12), lineWidth: 1))
+            .strokeBorder(containsCurrent ? Color.green.opacity(0.45) : .white.opacity(0.12), lineWidth: 1))
+    }
+
+    @ViewBuilder private func bulletList(_ lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("•").foregroundStyle(.white.opacity(0.45))
+                    Text(line)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .font(.system(size: 11.5))
+        .foregroundStyle(.white.opacity(0.78))
+    }
+
+    @ViewBuilder private func subVersionRow(_ v: VersionRow) -> some View {
+        let isCurrent = v.version == updater.currentVersion
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(v.version).font(.system(size: 13, weight: .bold))
+                if let d = v.release?.date {
+                    Text(d.formatted(date: .abbreviated, time: .omitted)).font(.system(size: 10.5)).foregroundStyle(.white.opacity(0.5))
+                }
+                Spacer(minLength: 0)
+                if isCurrent {
+                    Text(L("Kullanılan")).font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Capsule().fill(Color.green.opacity(0.3)))
+                } else if let r = v.release {
+                    let newer = Updater.isNewer(r.version, than: updater.currentVersion)
+                    Button(newer ? L("Yükle") : L("Bu sürüme dön")) { confirmRelease = r }
+                        .controlSize(.small)
+                        .disabled(installBusy)
+                }
+            }
+            bulletList(v.lines)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(.white.opacity(isCurrent ? 0.10 : 0.05)))
     }
 
     // MARK: Genel

@@ -3,6 +3,13 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.13
+
+- The Versions tab is grouped into series (1.0, 2.0, 2.1, 2.2, 2.3); open one to see its versions and switch to any of them
+- Text no longer spills out of the version boxes
+- "Check for updates…" in the menu shows the result in a small window; install a new version in one click
+- A notification appears when a new version is out; click it to open the update window
+
 ## 2.3.12
 
 - The profile badge is no longer cut off and shows the name you gave the Chrome profile (profiles with the same name are told apart by email)

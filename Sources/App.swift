@@ -1,10 +1,11 @@
 import AppKit
 import Combine
 import ServiceManagement
+import UserNotifications
 
 // MARK: - Uygulama
 
-@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotificationCenterDelegate {
     private let store = DeviceStore.shared
     private let switcher = Switcher()
     private let audioKeys = AudioKeys()
@@ -17,6 +18,7 @@ import ServiceManagement
     private let tiling = TilingController()
     private let zonePicker = ZonePickerController()
     private let dockDrag = DockDragAccelerator()
+    private let updatePopup = UpdatePopupController()
     private var permTimer: Timer?
     private var bag = Set<AnyCancellable>()
 
@@ -71,7 +73,10 @@ import ServiceManagement
         // GitHub'dan güncelleme
         Updater.shared.onAvailable = { [weak self] info in
             self?.hud.show(name: L("AudioTab %@ hazır · menüden yükle", info.version), symbol: "arrow.down.circle.fill")
+            UpdateNotifier.post(version: info.version)   // Bildirim Merkezi'ne de düşsün
         }
+        updatePopup.onInstall = { [weak self] in self?.installUpdate() }
+        UNUserNotificationCenter.current().delegate = self
         Updater.shared.start()
 
         // Ses kısayolu (pencere değiştiricinin tap'ini paylaşır)
@@ -245,6 +250,7 @@ import ServiceManagement
         }
         if TileSettings.enabled || CaptureSettings.enabled { menu.addItem(.separator()) }
 
+        menu.addItem(action(L("Güncellemeleri denetle…"), "arrow.triangle.2.circlepath", #selector(checkUpdatesFromMenu)))
         let prefs = NSMenuItem(title: L("Ayarlar…"), action: #selector(openSettings), keyEquivalent: ",")
         prefs.target = self
         menu.addItem(prefs)
@@ -283,6 +289,27 @@ import ServiceManagement
     @objc private func stopRecording() { capture.stopRecording() }
 
     @objc private func installUpdateFromMenu() { installUpdate() }
+
+    @objc private func checkUpdatesFromMenu() {
+        // Menü kapansın, sonra simgenin altında açılsın
+        DispatchQueue.main.async { MainActor.assumeIsolated { self.showUpdatePopup(check: true) } }
+    }
+
+    private func showUpdatePopup(check: Bool) {
+        updatePopup.show(below: statusItem.button?.window?.frame, check: check)
+    }
+
+    // Bildirime tıklanınca güncelleme penceresi açılsın; uygulama öndeyken de bildirim görünsün
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        DispatchQueue.main.async { MainActor.assumeIsolated { self.showUpdatePopup(check: false) } }
+        completionHandler()
+    }
 
     /// Kayıt sürüyorsa önce dosyayı bitir, sonra güncelle ve yeniden aç
     private func installUpdate(_ release: ReleaseInfo? = nil) {
