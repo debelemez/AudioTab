@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.14
+
+- Fixed the 2.3.13 build error (version series, the update window and notifications ship with this version)
+
 ## 2.3.13
 
 - The Versions tab is grouped into series (1.0, 2.0, 2.1, 2.2, 2.3); open one to see its versions and switch to any of them

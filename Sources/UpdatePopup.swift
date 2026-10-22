@@ -36,7 +36,10 @@ import UserNotifications
 
     /// anchor: menü çubuğu simgesinin ekrandaki yeri (yoksa ana ekranın sağ üstü)
     func show(below anchor: NSRect?, check: Bool = true) {
-        let screen = NSScreen.screens.first { anchor.map { r in $0.frame.contains(NSPoint(x: r.midX, y: r.midY)) } ?? false } ?? NSScreen.main
+        let screen = NSScreen.screens.first { s in
+            guard let r = anchor else { return false }
+            return s.frame.contains(NSPoint(x: r.midX, y: r.midY))
+        } ?? NSScreen.main
         guard let screen else { return }
         let vf = screen.visibleFrame
         var x = (anchor?.midX ?? vf.maxX - 200) - Self.size.width / 2

@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.14", items: [
+            ("2.3.13'ün derleme hatası düzeltildi (sürüm serileri, güncelleme penceresi ve bildirim bu sürümle geliyor)",
+             "Fixed the 2.3.13 build error (version series, the update window and notifications ship with this version)"),
+        ]),
         ChangelogEntry(version: "2.3.13", items: [
             ("Sürümler sekmesi serilere ayrıldı (1.0, 2.0, 2.1, 2.2, 2.3); bir seriyi açınca alt sürümleri ve geçiş düğmeleri çıkıyor",
              "The Versions tab is grouped into series (1.0, 2.0, 2.1, 2.2, 2.3); open one to see its versions and switch to any of them"),
