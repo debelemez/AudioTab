@@ -385,7 +385,8 @@ enum AX {
             // Sistem süreçlerinden sadece şu an ekranda duran soru pencerelerini al
             if !info.isRegular && z[wid] == nil { continue }
             let minimized: Bool = attr(w, kAXMinimizedAttribute) ?? false
-            if minimized && !showMin { continue }
+            // Tarayıcılar (kalıcı kayıttakiler) Dock'a gönderilmiş olsa da her zaman listede
+            if minimized && !showMin && !info.deep { continue }
             let t: String = attr(w, kAXTitleAttribute) ?? ""
             var aspect: CGFloat = 1.6
             if let v: AXValue = attr(w, kAXSizeAttribute) {
@@ -399,16 +400,13 @@ enum AX {
         }
         if info.deep { WindowRegistry.shared.remember(info.pid, good) }
         // Pencere sunucusunda olup AX ile henüz bulunamayan pencereler (ör. az önce başka masaüstünde
-        // açılan Chrome profil penceresi): kimlik numarasıyla göster, arka planda AX öğesini aramaya başla.
+        // açılan Chrome profil penceresi) varsa arka planda aramaya başla. Listeye sadece gerçekten
+        // bulunan pencereler girer (kimliği belli olmayanları göstermek gizli yardımcı pencereleri de getiriyordu).
         if info.deep && info.isRegular {
             let known = Set(cands.map { $0.1 }).union(WindowRegistry.shared.ignoredWindows(info.pid))
-            let missing = info.expected.filter { !known.contains($0.key) }
-            for (wid, w) in missing {
-                let score = z[wid] ?? (100_000 + info.rank * 100 + 90)
-                result.append((score, Item(app: app, window: nil, wid: wid,
-                                           title: w.title.isEmpty ? info.name : w.title, minimized: false, aspect: w.aspect)))
+            if info.expected.keys.contains(where: { !known.contains($0) }) {
+                WindowRegistry.shared.refresh([info.pid], force: true)
             }
-            if !missing.isEmpty { WindowRegistry.shared.refresh([info.pid], force: true) }
         }
         if result.isEmpty && !info.isRegular, let sw = info.systemWin {
             // AX ile pencere vermeyen sistem soruları (ör. şifre kutusu)

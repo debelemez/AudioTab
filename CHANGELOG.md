@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.4
+
+- Hidden helper windows no longer show up in the list
+- Browser windows (every Chrome profile) show in ⌘Tab and ⌥Tab even when minimized to the Dock
+
 ## 2.3.3
 
 - Limit ⌘Tab / ⌥Tab to one app (e.g. only Chrome windows); press A in the panel to switch apps

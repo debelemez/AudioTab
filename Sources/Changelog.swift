@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.4", items: [
+            ("Açık olmayan (gizli) pencereler artık listeye gelmiyor",
+             "Hidden helper windows no longer show up in the list"),
+            ("Tarayıcı pencereleri (tüm Chrome profilleri) Dock'a küçültülmüş olsa da ⌘Tab ve ⌥Tab'da görünür",
+             "Browser windows (every Chrome profile) show in ⌘Tab and ⌥Tab even when minimized to the Dock"),
+        ]),
         ChangelogEntry(version: "2.3.3", items: [
             ("⌘Tab / ⌥Tab'ı tek uygulamaya sınırla (ör. sadece Chrome pencereleri); panel açıkken A ile uygulamayı değiştir",
              "Limit ⌘Tab / ⌥Tab to one app (e.g. only Chrome windows); press A in the panel to switch apps"),
