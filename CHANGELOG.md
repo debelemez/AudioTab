@@ -3,6 +3,14 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.12
+
+- The profile badge is no longer cut off and shows the name you gave the Chrome profile (profiles with the same name are told apart by email)
+- Mouse buttons 4 and 5 go back / forward in Finder (can be turned off)
+- Add any apps you like to "Always find windows", alongside browsers
+- New Versions tab layout: equal-size boxes; long lists expand with a button
+- Long project names no longer disappear; they're shortened with "…"
+
 ## 2.3.11
 
 - Browser cards show which profile the window belongs to in a small badge (Chrome, Brave, Edge, Vivaldi)

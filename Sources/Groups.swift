@@ -167,7 +167,7 @@ enum ProjectName {
             name = (name as NSString).lastPathComponent
             name = (name as NSString).deletingPathExtension
             name = clean(name)
-            if !name.isEmpty { return name }
+            if !name.isEmpty { return name.count > 60 ? String(name.prefix(59)) + "…" : name }
         }
 
         // Uygulamanın kendi adını ve görünüm adlarını (Tracks, Edit, Color…) at
@@ -183,8 +183,9 @@ enum ProjectName {
             if l.hasPrefix("adobe ") || l.hasPrefix("davinci") || l.hasPrefix("ableton") || l.hasPrefix("blender") { return nil }
             return s
         }
-        guard let first = parts.first, first.count <= 80 else { return nil }
-        return first
+        guard let first = parts.first else { return nil }
+        // Çok uzun adlar silinmesin: kısaltılıp "…" ile devam etsin
+        return first.count > 60 ? String(first.prefix(59)).trimmingCharacters(in: .whitespaces) + "…" : first
     }
 
     /// Kaydedilmemiş işaretleri (*, •) ve boşlukları temizle

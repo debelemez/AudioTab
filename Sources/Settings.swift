@@ -122,6 +122,8 @@ struct SettingsView: View {
     @ObservedObject var updater: Updater
     @State private var tab = 0
     @State private var confirmRelease: ReleaseInfo?
+    /// Sürümler sekmesinde büyütülmüş kutular
+    @State private var expandedVersions = Set<String>()
 
     private let tabs = [(L("Ses"), "speaker.wave.2.fill"),
                         (L("Pencereler"), "rectangle.on.rectangle"),
@@ -450,6 +452,11 @@ struct SettingsView: View {
             }
         }
         if Profile.allCases.contains(where: { $0.grouped && !$0.list }) { groupedCard }
+        Card(title: L("Fare"), icon: "computermouse") {
+            ToggleRow(L("Finder'da yan tuşlarla geri / ileri"),
+                      L("Farenin 4. ve 5. tuşları Finder öndeyken klasörlerde geri ve ileri gider"),
+                      isOn: model.bind({ FinderMouseNav.enabled }, { FinderMouseNav.enabled = $0 }))
+        }
         Card(title: L("Dock'a sürükle-bırak"), icon: "dock.arrow.up.rectangle") {
             ToggleRow(L("Üstüne gelince uygulamayı hemen aç"),
                       L("Bir dosyayı sürüklerken Dock'taki uygulamanın üstüne gelince beklemeden öne gelir (kapalıysa açılır); dosyayı doğrudan penceresine bırakırsın"),
@@ -471,6 +478,37 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 250)
+            }
+            if DeepScanScope.current == .browsers {
+                Divider().opacity(0.4)
+                Row(L("Eklenen uygulamalar"), L("Tarayıcıların yanında bu uygulamaların pencereleri de her zaman bulunur")) {
+                    Menu(L("Ekle")) {
+                        ForEach(runningApps().filter { a in
+                            !DeepScanScope.extraApps.contains(a.id) && !DeepScanScope.browserPrefixes.contains { a.id.hasPrefix($0) }
+                        }) { a in
+                            Button(a.name) {
+                                DeepScanScope.extraApps.append(a.id)
+                                model.onDeepScanChanged(); model.refresh()
+                            }
+                        }
+                    }
+                    .frame(width: 110)
+                }
+                let extra = DeepScanScope.extraApps
+                if extra.isEmpty {
+                    Text(L("Henüz uygulama eklemedin.")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
+                } else {
+                    FlowChips(items: extra.map { bid in
+                        let name = NSRunningApplication.runningApplications(withBundleIdentifier: bid).first?.localizedName
+                            ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: bid)
+                                .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") }
+                            ?? bid
+                        return ChipItem(id: bid, name: name)
+                    }) { bid in
+                        DeepScanScope.extraApps.removeAll { $0 == bid }
+                        model.onDeepScanChanged(); model.refresh()
+                    }
+                }
             }
         }
         Card(title: L("Panelde kısayollar"), icon: "keyboard") {
@@ -909,35 +947,62 @@ struct SettingsView: View {
         }
         .onAppear { if updater.releases.isEmpty { updater.fetchReleases() } }
 
-        ForEach(versionRows) { row in
-            versionCard(row)
+        // Eşit boyda kutular, iki sütun. Uzun değişiklik listesi olan kutu düğmeyle büyür.
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12, alignment: .top),
+                            GridItem(.flexible(), spacing: 12, alignment: .top)],
+                  alignment: .leading, spacing: 12) {
+            ForEach(versionRows) { row in
+                versionCard(row)
+            }
         }
+    }
+
+    private static let versionBoxH: CGFloat = 178
+
+    /// Kapalı kutuya sığmayacak kadar uzun mu (yaklaşık: satır başına ~42 karakter, 4 satır yer)
+    private func isLong(_ row: VersionRow) -> Bool {
+        row.lines.reduce(0) { $0 + max(1, Int(ceil(Double($1.count) / 42))) } > 4
     }
 
     @ViewBuilder private func versionCard(_ row: VersionRow) -> some View {
         let isCurrent = row.version == updater.currentVersion
+        let long = isLong(row)
+        let open = expandedVersions.contains(row.version)
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text("AudioTab \(row.version)").font(.system(size: 14, weight: .bold))
-                if let d = row.release?.date {
-                    Text(d.formatted(date: .abbreviated, time: .omitted))
-                        .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
-                }
+            HStack(spacing: 7) {
+                Text(row.version).font(.system(size: 17, weight: .heavy))
                 if isCurrent {
                     Text(L("Kullanılan"))
-                        .font(.system(size: 10.5, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(Capsule().fill(Color.green.opacity(0.3)))
                 }
-                Spacer()
-                if row.preGitHub {
-                    Text(L("GitHub öncesi")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.45))
-                } else if let r = row.release, !isCurrent {
-                    let newer = Updater.isNewer(r.version, than: updater.currentVersion)
-                    Button(newer ? L("Yükle") : L("Bu sürüme dön")) { confirmRelease = r }
-                        .disabled(installBusy)
+                Spacer(minLength: 0)
+                if long {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if open { expandedVersions.remove(row.version) } else { expandedVersions.insert(row.version) }
+                        }
+                    } label: {
+                        Image(systemName: open ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .help(open ? L("Küçült") : L("Tümünü göster"))
                 }
             }
+            Group {
+                if row.preGitHub {
+                    Text(L("GitHub öncesi"))
+                } else if let d = row.release?.date {
+                    Text(d.formatted(date: .abbreviated, time: .omitted))
+                } else {
+                    Text(" ")
+                }
+            }
+            .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
+
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(row.lines.enumerated()), id: \.offset) { _, line in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -946,14 +1011,28 @@ struct SettingsView: View {
                     }
                 }
             }
-            .font(.system(size: 12))
+            .font(.system(size: 11.5))
             .foregroundStyle(.white.opacity(0.78))
+            .frame(maxWidth: .infinity, maxHeight: open ? nil : .infinity, alignment: .topLeading)
+            .clipped()
+            .mask(LinearGradient(stops: [.init(color: .black, location: 0),
+                                         .init(color: .black, location: (long && !open) ? 0.72 : 1),
+                                         .init(color: .black.opacity((long && !open) ? 0 : 1), location: 1)],
+                                 startPoint: .top, endPoint: .bottom))
+
+            if let r = row.release, !isCurrent, !row.preGitHub {
+                let newer = Updater.isNewer(r.version, than: updater.currentVersion)
+                Button(newer ? L("Yükle") : L("Bu sürüme dön")) { confirmRelease = r }
+                    .disabled(installBusy)
+                    .controlSize(.small)
+            }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: open ? nil : Self.versionBoxH, alignment: .top)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
             .fill(.white.opacity(isCurrent ? 0.10 : 0.06)))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
             .strokeBorder(isCurrent ? Color.green.opacity(0.45) : .white.opacity(0.12), lineWidth: 1))
     }
 

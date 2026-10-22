@@ -16,6 +16,18 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.12", items: [
+            ("Profil rozeti tam okunuyor; Chrome'da profile verdiğin ad yazıyor (aynı ada sahip profiller e-postayla ayrılır)",
+             "The profile badge is no longer cut off and shows the name you gave the Chrome profile (profiles with the same name are told apart by email)"),
+            ("Farenin 4. ve 5. tuşlarıyla Finder'da geri / ileri (ayarlardan kapatılabilir)",
+             "Mouse buttons 4 and 5 go back / forward in Finder (can be turned off)"),
+            ("\"Pencereleri her zaman bul\" listesine tarayıcıların yanında istediğin uygulamaları ekleyebilirsin",
+             "Add any apps you like to \"Always find windows\", alongside browsers"),
+            ("Sürümler sekmesi yeni tasarım: eşit boyda kutular, uzun listeler düğmeyle büyüyor",
+             "New Versions tab layout: equal-size boxes; long lists expand with a button"),
+            ("Uzun proje adları artık kaybolmuyor, \"…\" ile kısalıyor",
+             "Long project names no longer disappear; they're shortened with \"…\""),
+        ]),
         ChangelogEntry(version: "2.3.11", items: [
             ("Tarayıcı kartlarında pencerenin hangi profile ait olduğu küçük bir rozetle yazıyor (Chrome, Brave, Edge, Vivaldi)",
              "Browser cards show which profile the window belongs to in a small badge (Chrome, Brave, Edge, Vivaldi)"),

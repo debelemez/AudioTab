@@ -10,7 +10,15 @@ import Cocoa
 final class BrowserProfiles: @unchecked Sendable {
     static let shared = BrowserProfiles()
 
-    struct Profile { let name: String; let color: NSColor? }
+    struct Profile {
+        /// Rozette yazan ad: Chrome'da profile verdiğin ad (yoksa hesap adı; aynıysa e-posta ile ayrılır)
+        let name: String
+        let color: NSColor?
+        /// Pencereyle eşleştirmek için: e-posta (en ayırt edici), profil adı, hesap adı
+        var email = ""
+        var localName = ""
+        var accountNames: [String] = []
+    }
 
     /// Paket kimliği başlangıcı → ~/Library/Application Support altındaki klasör
     private static let roots: [(String, String)] = [
@@ -72,14 +80,9 @@ final class BrowserProfiles: @unchecked Sendable {
         let profiles = names(bid)
         guard profiles.count > 1 else { return nil }     // tek profil: rozet gereksiz
 
-        // 1) Pencere başlığı: "… - Google Chrome - İş" / "… - İş"
-        if let title: String = AX.attr(w, kAXTitleAttribute) {
-            for p in profiles.sorted(by: { $0.name.count > $1.name.count })
-            where title.hasSuffix(" - \(p.name)") || title.hasSuffix(" – \(p.name)") {
-                return p
-            }
-        }
-        // 2) Araç çubuğundaki profil düğmesi (adı profil adı ya da "İş (…)" gibi)
+        // Pencere başlığı + araç çubuğundaki düğmelerin adları / açıklamaları / ipuçları
+        var texts: [String] = []
+        if let title: String = AX.attr(w, kAXTitleAttribute) { texts.append(title) }
         var queueEls: [(AXUIElement, Int)] = [(w, 0)]
         var visited = 0
         while !queueEls.isEmpty && visited < 500 {
@@ -88,21 +91,28 @@ final class BrowserProfiles: @unchecked Sendable {
             AXUIElementSetMessagingTimeout(el, 0.05)
             let role: String? = AX.attr(el, kAXRoleAttribute)
             if role == kAXButtonRole as String || role == kAXPopUpButtonRole as String || role == "AXMenuButton" {
-                let texts = [AX.attr(el, kAXTitleAttribute) as String?, AX.attr(el, kAXDescriptionAttribute) as String?,
-                             AX.attr(el, kAXHelpAttribute) as String?].compactMap { $0 }
-                for t in texts {
-                    for p in profiles.sorted(by: { $0.name.count > $1.name.count })
-                    where t == p.name || t.hasPrefix(p.name + " ") || t.hasPrefix(p.name + "(") || t.hasSuffix(": " + p.name) {
-                        return p
-                    }
+                for k in [kAXTitleAttribute, kAXDescriptionAttribute, kAXHelpAttribute] {
+                    if let s: String = AX.attr(el, k as String), !s.isEmpty { texts.append(s) }
                 }
             }
-            // Web içeriğine inme (çok büyük); sadece pencere çerçevesi ve araç çubuğu
-            if role == "AXWebArea" || depth >= 7 { continue }
+            if role == "AXWebArea" || depth >= 7 { continue }   // web içeriğine inme
             if let kids: [AXUIElement] = AX.attr(el, kAXChildrenAttribute) {
                 for k in kids { queueEls.append((k, depth + 1)) }
             }
         }
+        let all = texts.map { $0.lowercased() }
+
+        // Sadece TEK profile uyan ipucuyla karar ver (iki profilde de aynı hesap adı varsa o ipucu sayılmaz)
+        func unique(_ key: (Profile) -> [String], _ match: (String, String) -> Bool) -> Profile? {
+            let hits = profiles.filter { p in
+                key(p).contains { k in !k.isEmpty && all.contains { match($0, k.lowercased()) } }
+            }
+            return hits.count == 1 ? hits[0] : nil
+        }
+        // 1) e-posta  2) profile verilen ad  3) hesap adı
+        if let p = unique({ [$0.email] }, { $0.contains($1) }) { return p }
+        if let p = unique({ [$0.localName] }, { t, k in t == k || t.hasPrefix(k + " ") || t.hasPrefix(k + "(") || t.hasSuffix(" - " + k) || t.hasSuffix(" – " + k) || t.contains("\n" + k) || t.hasPrefix(k + "\n") }) { return p }
+        if let p = unique({ $0.accountNames }, { t, k in t == k || t.hasPrefix(k + " ") || t.hasPrefix(k + "\n") || t.hasSuffix(" - " + k) }) { return p }
         return nil
     }
 
@@ -118,15 +128,35 @@ final class BrowserProfiles: @unchecked Sendable {
             if let data = try? Data(contentsOf: f),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let cache = (json["profile"] as? [String: Any])?["info_cache"] as? [String: [String: Any]] {
+                struct Raw { let local: String; let isDefault: Bool; let given: String; let full: String; let email: String; let color: NSColor? }
+                var raws: [Raw] = []
                 for (_, info) in cache {
-                    guard let name = info["name"] as? String, !name.isEmpty else { continue }
+                    let local = info["name"] as? String ?? ""
+                    let email = info["user_name"] as? String ?? ""
                     var color: NSColor?
                     if let c = (info["profile_highlight_color"] as? NSNumber)?.int64Value ?? (info["default_avatar_fill_color"] as? NSNumber)?.int64Value {
                         let v = UInt32(truncatingIfNeeded: c)
                         color = NSColor(srgbRed: CGFloat((v >> 16) & 0xff) / 255, green: CGFloat((v >> 8) & 0xff) / 255,
                                         blue: CGFloat(v & 0xff) / 255, alpha: 1)
                     }
-                    list.append(Profile(name: name, color: color))
+                    raws.append(Raw(local: local, isDefault: info["is_using_default_name"] as? Bool ?? false,
+                                    given: info["gaia_given_name"] as? String ?? "", full: info["gaia_name"] as? String ?? "",
+                                    email: email, color: color))
+                }
+                // Rozet adı: profile verdiğin ad. Varsayılan addaysa (Kişi 1 gibi) hesap adı.
+                func base(_ r: Raw) -> String {
+                    if !r.isDefault, !r.local.isEmpty { return r.local }
+                    return !r.given.isEmpty ? r.given : (!r.full.isEmpty ? r.full : r.local)
+                }
+                let counts = Dictionary(raws.map { (base($0).lowercased(), 1) }, uniquingKeysWith: +)
+                for r in raws {
+                    var shown = base(r)
+                    // İki profil aynı adı gösteriyorsa e-postayla ayır
+                    if (counts[shown.lowercased()] ?? 0) > 1, !r.email.isEmpty { shown = r.email }
+                    guard !shown.isEmpty else { continue }
+                    list.append(Profile(name: shown, color: r.color, email: r.email,
+                                        localName: r.isDefault ? "" : r.local,
+                                        accountNames: [r.full, r.given].filter { !$0.isEmpty }))
                 }
             }
         }

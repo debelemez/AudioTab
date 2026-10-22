@@ -309,6 +309,16 @@ private let englishStrings: [String: String] = [
     "Bir dosyayı sürüklerken Dock'taki uygulamanın üstüne gelince beklemeden öne gelir (kapalıysa açılır); dosyayı doğrudan penceresine bırakırsın": "While dragging a file, hovering over an app in the Dock brings it forward right away (and opens it if needed), so you can drop straight into its window",
     "Sık kullanılanlar": "Favorite folders",
     "Favoriler": "Finder Favorites",
+    // Pencereleri her zaman bul: eklenen uygulamalar
+    "Eklenen uygulamalar": "Added apps",
+    "Tarayıcıların yanında bu uygulamaların pencereleri de her zaman bulunur": "Besides browsers, these apps' windows are always found too",
+    "Henüz uygulama eklemedin.": "You haven't added any apps yet.",
+    "Küçült": "Collapse",
+    "Tümünü göster": "Show all",
+    // Fare
+    "Fare": "Mouse",
+    "Finder'da yan tuşlarla geri / ileri": "Back / forward in Finder with the side buttons",
+    "Farenin 4. ve 5. tuşları Finder öndeyken klasörlerde geri ve ileri gider": "Mouse buttons 4 and 5 go back and forward between folders while Finder is in front",
     // Uygulama filtresi
     "Sadece seçili kartın uygulaması / hepsine dön (geçici)": "Only the selected card's app / back to all (temporary)",
     "é (Tab'ın üstündeki tuş) · F": "` (key above Tab) · F",

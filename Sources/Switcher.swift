@@ -188,6 +188,12 @@ enum DeepScanScope: String, CaseIterable {
         "org.mozilla.firefox", "app.zen-browser", "com.kagi.kagimacOS", "ai.perplexity.comet",
     ]
 
+    /// Kullanıcının eklediği uygulamalar (paket kimliği): "Tarayıcılar" kapsamında onlar da hep bulunur
+    static var extraApps: [String] {
+        get { UserDefaults.standard.stringArray(forKey: "deepScan.extra") ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: "deepScan.extra") }
+    }
+
     func covers(_ app: NSRunningApplication) -> Bool {
         guard app.activationPolicy == .regular else { return false }
         switch self {
@@ -195,7 +201,7 @@ enum DeepScanScope: String, CaseIterable {
         case .all: return true
         case .browsers:
             guard let b = app.bundleIdentifier else { return false }
-            return Self.browserPrefixes.contains { b.hasPrefix($0) }
+            return Self.browserPrefixes.contains { b.hasPrefix($0) } || Self.extraApps.contains(b)
         }
     }
 }
@@ -595,6 +601,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     let swallow = MainActor.assumeIsolated { () -> Bool in
         gAudioKeys?.handle(type, code, flags)              // ses kısayolu (hiçbir tuşu yutmaz)
         if gExtraKeys?.handle(type, code, flags, event) == true { return true }   // ⌘⇧3/4/5/6, ⌘<
+        if gSwitcher?.isActive != true, FinderMouseNav.handle(type, event) { return true }   // fare 4/5: Finder'da geri/ileri
         return gSwitcher?.handle(type, code, flags) ?? false
     }
     return swallow ? nil : Unmanaged.passUnretained(event)
@@ -1661,7 +1668,7 @@ final class ItemCell: NSView {
                 if let thumb { tv.set(thumb, dimmed: dimmed) } else { tv.placeholder(item.app.icon, dimmed: dimmed) }
                 if let project { addSubview(Self.projectBand(project, app: item.app, in: area)) }
                 else if let profile {
-                    let b = Self.profileBadge(profile)
+                    let b = Self.profileBadge(profile, maxWidth: area.width - 12)
                     b.frame.origin = NSPoint(x: area.minX + 6, y: area.minY + 6)
                     addSubview(b)
                 }
@@ -1688,7 +1695,7 @@ final class ItemCell: NSView {
                 addSubview(title)
 
                 if let profile, state.isEmpty {
-                    let b = Self.profileBadge(profile)
+                    let b = Self.profileBadge(profile, maxWidth: frame.width - 12)
                     b.frame.origin = NSPoint(x: ((frame.width - b.frame.width) / 2).rounded(), y: 9)
                     addSubview(b)
                 } else {
@@ -1746,9 +1753,12 @@ final class ItemCell: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     /// Tarayıcı profili rozeti: küçük koyu kapsül, solda profil renginde nokta
-    static func profileBadge(_ p: BrowserProfiles.Profile) -> NSView {
+    static func profileBadge(_ p: BrowserProfiles.Profile, maxWidth: CGFloat = 200) -> NSView {
         let f = NSFont.systemFont(ofSize: 10.5, weight: .semibold)
-        let tw = min(120, ceil((p.name as NSString).size(withAttributes: [.font: f]).width))
+        let t = NSTextField(labelWithString: p.name)
+        t.font = f
+        // Etiketin kendi iç boşluğu da hesaba katılsın (yoksa 2 harf sonra "…" oluyordu)
+        let tw = max(20, min(170, maxWidth - 26, ceil(t.intrinsicContentSize.width) + 2))
         let h: CGFloat = 18
         let v = NSView(frame: NSRect(x: 0, y: 0, width: tw + 26, height: h))
         v.wantsLayer = true
@@ -1761,12 +1771,10 @@ final class ItemCell: NSView {
         dot.layer?.cornerRadius = 3.5
         dot.layer?.backgroundColor = (p.color ?? NSColor.controlAccentColor).cgColor
         v.addSubview(dot)
-        let t = NSTextField(labelWithString: p.name)
-        t.font = f
         t.textColor = NSColor.white.withAlphaComponent(0.95)
         t.lineBreakMode = .byTruncatingTail
         t.maximumNumberOfLines = 1
-        t.frame = NSRect(x: 18, y: 2, width: tw, height: 14)
+        t.frame = NSRect(x: 17, y: 2, width: tw, height: 14)
         v.addSubview(t)
         v.toolTip = p.name
         return v
