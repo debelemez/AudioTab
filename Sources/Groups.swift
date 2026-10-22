@@ -2,12 +2,13 @@ import Cocoa
 
 // MARK: - ⌘Tab gruplu görünüm: pencereleri türüne göre bölümlere ayır
 //
-// Klasörler (Finder) · Tarayıcılar · Projeler (DaVinci, Adobe, Final Cut…) · Geliştirme · Uygulamalar
+// Yan yana sütunlar: Tarayıcılar · Projeler (DaVinci, Adobe, Final Cut…) · Geliştirme · Uygulamalar · Klasörler
 // Klasör kartlarında önizleme yerine klasörün adı büyük yazılır; proje uygulamalarında
 // pencere başlığından okunan proje adı önizlemenin üstüne yazılır.
 
+/// Soldan sağa sıra. Klasörler her zaman en sağda.
 enum WindowGroup: Int, CaseIterable {
-    case folders, browsers, projects, code, apps
+    case browsers, projects, code, apps, folders
 
     var title: String {
         switch self {
@@ -97,6 +98,29 @@ enum GroupSettings {
         if DeepScanScope.browserPrefixes.contains(where: { b.hasPrefix($0) }) { return .browsers }
         if codeApps.contains(where: { b.hasPrefix($0) }) { return .code }
         return .apps
+    }
+
+    /// Proje şeridinin rengi: bilinen uygulamalara sabit, diğerlerine paket kimliğinden türetilmiş renk
+    static func color(for app: NSRunningApplication) -> NSColor {
+        let b = (app.bundleIdentifier ?? app.localizedName ?? "").lowercased()
+        let known: [(String, (CGFloat, CGFloat, CGFloat))] = [
+            ("davinciresolve", (0.93, 0.36, 0.18)), ("fusion", (0.80, 0.25, 0.45)),
+            ("premierepro", (0.48, 0.30, 0.92)), ("aftereffects", (0.40, 0.33, 0.95)),
+            ("photoshop", (0.10, 0.52, 0.95)), ("illustrator", (0.93, 0.55, 0.05)),
+            ("indesign", (0.90, 0.20, 0.45)), ("audition", (0.10, 0.65, 0.55)),
+            ("lightroom", (0.20, 0.55, 0.85)), ("finalcut", (0.30, 0.30, 0.38)),
+            ("logic", (0.18, 0.62, 0.58)), ("garageband", (0.95, 0.50, 0.10)),
+            ("ableton", (0.55, 0.55, 0.12)), ("blender", (0.92, 0.47, 0.10)),
+            ("cinema4d", (0.15, 0.45, 0.90)), ("figma", (0.62, 0.30, 0.95)),
+            ("sketch", (0.92, 0.62, 0.05)), ("pixelmator", (0.10, 0.60, 0.90)),
+        ]
+        if let k = known.first(where: { b.contains($0.0) }) {
+            return NSColor(srgbRed: k.1.0, green: k.1.1, blue: k.1.2, alpha: 1)
+        }
+        // Kararlı karma: aynı uygulama hep aynı renk
+        var h: UInt64 = 1469598103934665603
+        for c in b.utf8 { h = (h ^ UInt64(c)) &* 1099511628211 }
+        return NSColor(hue: CGFloat(h % 360) / 360, saturation: 0.62, brightness: 0.78, alpha: 1)
     }
 
     /// Kartta gösterilecek ek bilgi: klasör adı (büyük) ya da proje adı

@@ -410,7 +410,7 @@ struct SettingsView: View {
                           isOn: model.profileBinding(p, "enabled"))
                 Divider().opacity(0.4)
                 Row(L("Görünüm"), p.list ? L("Alt alta satırlar, ses listesi gibi")
-                                    : p.grouped ? L("Klasörler · Tarayıcılar · Projeler · Geliştirme · Uygulamalar bölümleri")
+                                    : p.grouped ? L("Yan yana bölümler: Tarayıcılar · Projeler · Geliştirme · Uygulamalar · Klasörler")
                                     : L("Kartlar yan yana")) {
                     Picker("", selection: model.bind({ p.list ? 1 : (p.grouped ? 2 : 0) }, { v in
                         p.list = v == 1

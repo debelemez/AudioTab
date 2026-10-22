@@ -16,6 +16,14 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.6", items: [
+            ("Proje adı artık büyük ve net: önizlemenin altında uygulamaya özgü renkte şerit",
+             "Project names are now large and clear: a band in the app's own color under the preview"),
+            ("Kart başlığında da uzun pencere başlığı yerine proje adı",
+             "The card title shows the project name instead of the long window title"),
+            ("Gruplu görünüm yatay: bölümler yan yana, aralarında ince çizgi; Klasörler hep en sağda",
+             "Grouped view is horizontal: sections side by side with thin dividers; Folders always on the far right"),
+        ]),
         ChangelogEntry(version: "2.3.5", items: [
             ("İsteğe bağlı gruplu ⌘Tab görünümü: Klasörler · Tarayıcılar · Projeler · Geliştirme · Uygulamalar",
              "Optional grouped ⌘Tab view: Folders · Browsers · Projects · Development · Apps"),

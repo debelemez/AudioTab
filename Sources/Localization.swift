@@ -285,7 +285,7 @@ private let englishStrings: [String: String] = [
     "Geliştirme": "Development",
     "Uygulamalar": "Apps",
     "Gruplu": "Grouped",
-    "Klasörler · Tarayıcılar · Projeler · Geliştirme · Uygulamalar bölümleri": "Sections: Folders · Browsers · Projects · Development · Apps",
+    "Yan yana bölümler: Tarayıcılar · Projeler · Geliştirme · Uygulamalar · Klasörler": "Side-by-side sections: Browsers · Projects · Development · Apps · Folders",
     "Gruplu görünüm": "Grouped view",
     "Klasör adlarını büyük göster": "Show folder names large",
     "Finder pencerelerinde önizleme yerine klasörün adı": "Finder windows show the folder name instead of a preview",

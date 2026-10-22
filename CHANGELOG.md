@@ -3,6 +3,12 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.6
+
+- Project names are now large and clear: a band in the app's own color under the preview
+- The card title shows the project name instead of the long window title
+- Grouped view is horizontal: sections side by side with thin dividers; Folders always on the far right
+
 ## 2.3.5
 
 - Optional grouped ⌘Tab view: Folders · Browsers · Projects · Development · Apps
