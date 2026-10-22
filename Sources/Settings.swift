@@ -425,6 +425,16 @@ struct SettingsView: View {
                 ToggleRow(L("Küçültülmüş pencereler"), L("Küçültülmüş ve penceresiz uygulamaları da göster"),
                           isOn: model.profileBinding(p, "showMinimized"))
                     .disabled(!p.enabled)
+                Divider().opacity(0.4)
+                Row(L("Hangi uygulamalar"), L("Sadece seçilen uygulamanın pencereleri arasında geçer (ör. tüm Chrome pencereleri). Panel açıkken A ile değiştirebilirsin.")) {
+                    Picker("", selection: model.bind({ p.appFilter }, { p.appFilter = $0 })) {
+                        Text(L("Tüm uygulamalar")).tag("")
+                        ForEach(filterChoices(p)) { c in Text(c.name).tag(c.id) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 200)
+                }
+                .disabled(!p.enabled)
             }
         }
         Card(title: L("Pencereleri her zaman bul"), icon: "scope") {
@@ -450,8 +460,27 @@ struct SettingsView: View {
                 shortcut("Esc", L("İptal"))
                 shortcut("W · M · H · Q", L("Kapat · Küçült · Gizle · Çık"))
                 shortcut("S", L("Uygulamanın ses cihazını değiştir"))
+                shortcut("A / ⇧A", L("Sadece bir uygulamanın pencereleri: sonraki / önceki uygulama"))
             }
         }
+    }
+
+    /// Açık uygulamalar (+ kayıtlı seçim kapalı bir uygulamaysa o da), ada göre sıralı
+    private struct AppChoice: Identifiable { let id: String; let name: String }
+
+    private func filterChoices(_ p: Profile) -> [AppChoice] {
+        var list: [AppChoice] = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != Bundle.main.bundleIdentifier }
+            .compactMap { a in a.bundleIdentifier.map { AppChoice(id: $0, name: a.localizedName ?? $0) } }
+        var seen = Set<String>()
+        list = list.filter { seen.insert($0.id).inserted }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let cur = p.appFilter
+        if !cur.isEmpty, !seen.contains(cur) {
+            let name = NSWorkspace.shared.urlForApplication(withBundleIdentifier: cur)
+                .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") } ?? cur
+            list.insert(AppChoice(id: cur, name: name), at: 0)
+        }
+        return list
     }
 
     private func shortcut(_ k: String, _ v: String) -> some View {

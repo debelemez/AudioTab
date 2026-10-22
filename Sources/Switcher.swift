@@ -93,6 +93,13 @@ enum Profile: String, CaseIterable {
         nonmutating set { write("list", newValue) }
     }
 
+    /// Sadece bu uygulamanın pencereleri (paket kimliği). Boş = tüm uygulamalar.
+    /// Panel açıkken A (ya da Tab'ın üstündeki tuş) ile değiştirilebilir.
+    var appFilter: String {
+        get { UserDefaults.standard.string(forKey: "\(rawValue).appFilter") ?? "" }
+        nonmutating set { UserDefaults.standard.set(newValue, forKey: "\(rawValue).appFilter") }
+    }
+
     func get(_ key: String) -> Bool {
         switch key {
         case "enabled": return enabled
@@ -136,6 +143,24 @@ struct AppScanInfo {
     let systemWin: (CGWindowID, CGFloat)?
     /// Kalıcı pencere kaydı bu uygulama için kullanılsın mı (tarayıcılar vb.)
     let deep: Bool
+    /// Pencere sunucusuna göre bu uygulamanın var olan normal pencereleri (diğer masaüstleri dahil).
+    /// AX ile henüz bulunamamış olanlar da listede gösterilsin diye (ör. Chrome'da yeni açılan profil penceresi).
+    var expected: [CGWindowID: (title: String, aspect: CGFloat)] = [:]
+}
+
+/// Bir uygulamanın pencere sunucusundaki gerçek pencereleri (katman 0, makul boyutta).
+/// Diğer masaüstlerindekiler ve küçültülmüşler de gelir. Başlık sadece Ekran Kaydı izni varsa dolu.
+func realWindows(_ all: [[String: Any]], pid: pid_t? = nil) -> [pid_t: [CGWindowID: (title: String, aspect: CGFloat)]] {
+    var out: [pid_t: [CGWindowID: (title: String, aspect: CGFloat)]] = [:]
+    for w in all where (w[kCGWindowLayer as String] as? Int) == 0 {
+        guard let n = w[kCGWindowNumber as String] as? Int,
+              let p = (w[kCGWindowOwnerPID as String] as? Int).map({ pid_t($0) }), pid == nil || p == pid,
+              let b = w[kCGWindowBounds as String] as? [String: CGFloat],
+              let wd = b["Width"], let ht = b["Height"], wd >= 200, ht >= 120,
+              (w[kCGWindowAlpha as String] as? Double ?? 1) > 0 else { continue }
+        out[p, default: [:]][CGWindowID(n)] = (w[kCGWindowName as String] as? String ?? "", wd / ht)
+    }
+    return out
 }
 
 // MARK: - Pencereleri her zaman bul (diğer masaüstleri + geç cevap veren uygulamalar)
@@ -177,6 +202,8 @@ final class WindowRegistry: @unchecked Sendable {
 
     private let lock = NSLock()
     private var map: [pid_t: [CGWindowID: AXUIElement]] = [:]
+    /// Pencere sunucusunda görünen ama gerçek pencere olmayanlar (araç ipucu, gizli yardımcı pencere…)
+    private var ignored: [pid_t: Set<CGWindowID>] = [:]
     private var pending = Set<pid_t>()
     private var lastRun: [pid_t: Date] = [:]
     private let queue = DispatchQueue(label: "audiotab.windowregistry", qos: .utility)
@@ -184,6 +211,11 @@ final class WindowRegistry: @unchecked Sendable {
     func windows(_ pid: pid_t) -> [CGWindowID: AXUIElement] {
         lock.lock(); defer { lock.unlock() }
         return map[pid] ?? [:]
+    }
+
+    func ignoredWindows(_ pid: pid_t) -> Set<CGWindowID> {
+        lock.lock(); defer { lock.unlock() }
+        return ignored[pid] ?? []
     }
 
     var isEmpty: Bool {
@@ -201,6 +233,7 @@ final class WindowRegistry: @unchecked Sendable {
     func forget(_ pid: pid_t) {
         lock.lock()
         map[pid] = nil
+        ignored[pid] = nil
         lastRun[pid] = nil
         lock.unlock()
     }
@@ -208,6 +241,7 @@ final class WindowRegistry: @unchecked Sendable {
     func removeAll() {
         lock.lock()
         map.removeAll()
+        ignored.removeAll()
         lastRun.removeAll()
         lock.unlock()
     }
@@ -218,6 +252,10 @@ final class WindowRegistry: @unchecked Sendable {
         for (pid, wins) in map {
             let kept = wins.filter { alive.contains($0.key) }
             map[pid] = kept.isEmpty ? nil : kept
+        }
+        for (pid, set) in ignored {
+            let kept = set.filter { alive.contains($0) }
+            ignored[pid] = kept.isEmpty ? nil : kept
         }
         lock.unlock()
     }
@@ -237,10 +275,11 @@ final class WindowRegistry: @unchecked Sendable {
 
         for pid in todo {
             queue.async { [self] in
-                let found = Self.findAllWindows(pid)
+                let (found, skip) = Self.findAllWindows(pid)
                 lock.lock()
                 pending.remove(pid)
                 if !found.isEmpty { map[pid, default: [:]].merge(found) { _, new in new } }
+                if !skip.isEmpty { ignored[pid, default: []].formUnion(skip) }
                 lock.unlock()
             }
         }
@@ -248,8 +287,9 @@ final class WindowRegistry: @unchecked Sendable {
 
     /// Uygulamanın AX öğelerini kimlik numarasıyla tek tek dener; pencere olanları toplar.
     /// Diğer masaüstlerindeki pencereler de bu yolla bulunur. Sadece arka planda çalışır.
-    private static func findAllWindows(_ pid: pid_t) -> [CGWindowID: AXUIElement] {
-        guard let fRemoteToken else { return [:] }
+    /// Dönüş: bulunan pencereler + gerçek pencere olmadığı anlaşılanlar (bir daha aranmaz, listede gösterilmez).
+    private static func findAllWindows(_ pid: pid_t) -> ([CGWindowID: AXUIElement], Set<CGWindowID>) {
+        guard let fRemoteToken else { return ([:], []) }
         let standard = kAXStandardWindowSubrole as String
         let dialog = kAXDialogSubrole as String
 
@@ -258,18 +298,32 @@ final class WindowRegistry: @unchecked Sendable {
         token.replaceSubrange(4..<8, with: withUnsafeBytes(of: Int32(0)) { Data($0) })
         token.replaceSubrange(8..<12, with: withUnsafeBytes(of: Int32(0x636f636f)) { Data($0) })
 
+        // Bulunması gereken pencereler: pencere sunucusunda bu uygulamaya ait olanlar.
+        // Hepsi bulununca durulur. Chrome gibi çok öğesi olan uygulamalarda yeni pencerelerin
+        // kimlik numarası büyük olabildiği için aralık geniş, süre sınırı da daha uzun (arka planda).
+        let all = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
+        var targets = Set((realWindows(all, pid: pid)[pid] ?? [:]).keys)
         var out: [CGWindowID: AXUIElement] = [:]
-        let deadline = Date().addingTimeInterval(0.8)
-        for id in UInt64(0)..<UInt64(1500) {
-            if id % 100 == 0 && Date() > deadline { break }
+        var skip = Set<CGWindowID>()
+        var timedOut = false
+        let deadline = Date().addingTimeInterval(targets.isEmpty ? 0.8 : 3.0)
+        let limit: UInt64 = targets.isEmpty ? 1500 : 60_000
+        for id in UInt64(0)..<limit {
+            if id % 100 == 0 && Date() > deadline { timedOut = true; break }
+            if id >= 1500 && targets.isEmpty { break }
             token.replaceSubrange(12..<20, with: withUnsafeBytes(of: id) { Data($0) })
             guard let el = fRemoteToken(token as CFData)?.takeRetainedValue() else { continue }
             AXUIElementSetMessagingTimeout(el, 0.05)
-            guard let sub: String = AX.attr(el, kAXSubroleAttribute), sub == standard || sub == dialog else { continue }
+            guard let sub: String = AX.attr(el, kAXSubroleAttribute) else { continue }
             var wid: CGWindowID = 0
-            if fGetWindow?(el, &wid) == 0, wid != 0 { out[wid] = el }
+            guard fGetWindow?(el, &wid) == 0, wid != 0 else { continue }
+            if sub == standard || sub == dialog { out[wid] = el } else { skip.insert(wid) }
+            targets.remove(wid)
+            if limit > 1500 && targets.isEmpty { break }   // aranan hepsi bulundu
         }
-        return out
+        // Tüm aralık tarandı ve hâlâ bulunamadıysa bunlar kullanıcı penceresi değil
+        if !timedOut { skip.formUnion(targets) }
+        return (out, skip)
     }
 }
 
@@ -344,6 +398,18 @@ enum AX {
                                        system: !info.isRegular)))
         }
         if info.deep { WindowRegistry.shared.remember(info.pid, good) }
+        // Pencere sunucusunda olup AX ile henüz bulunamayan pencereler (ör. az önce başka masaüstünde
+        // açılan Chrome profil penceresi): kimlik numarasıyla göster, arka planda AX öğesini aramaya başla.
+        if info.deep && info.isRegular {
+            let known = Set(cands.map { $0.1 }).union(WindowRegistry.shared.ignoredWindows(info.pid))
+            let missing = info.expected.filter { !known.contains($0.key) }
+            for (wid, w) in missing {
+                let score = z[wid] ?? (100_000 + info.rank * 100 + 90)
+                result.append((score, Item(app: app, window: nil, wid: wid,
+                                           title: w.title.isEmpty ? info.name : w.title, minimized: false, aspect: w.aspect)))
+            }
+            if !missing.isEmpty { WindowRegistry.shared.refresh([info.pid], force: true) }
+        }
         if result.isEmpty && !info.isRegular, let sw = info.systemWin {
             // AX ile pencere vermeyen sistem soruları (ör. şifre kutusu)
             result.append((z[sw.0] ?? 0, Item(app: app, window: nil, wid: sw.0, title: info.name,
@@ -396,7 +462,7 @@ enum AX {
         }
 
         let scope = DeepScanScope.current
-        let infos = apps.map { app -> AppScanInfo in
+        var infos: [AppScanInfo] = apps.map { app -> AppScanInfo in
             let pid = app.processIdentifier
             return AppScanInfo(app: app, pid: pid, isRegular: app.activationPolicy == .regular,
                                rank: mru.firstIndex(of: pid) ?? 500, name: app.localizedName ?? "",
@@ -412,6 +478,8 @@ enum AX {
                 if let n = w[kCGWindowNumber as String] as? Int { alive.insert(CGWindowID(n)) }
             }
             WindowRegistry.shared.prune(alive: alive)
+            let real = realWindows(all)
+            for i in infos.indices where infos[i].deep { infos[i].expected = real[infos[i].pid] ?? [:] }
         }
 
         let scored = AX.scanAll(infos, z: z, alive: alive, showMin: showMin)
@@ -529,6 +597,8 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var items: [Item] = []
+    /// Filtre uygulanmadan önceki tüm pencereler (panel açıkken uygulama değiştirmek için)
+    private var allItems: [Item] = []
     private var selected = 0
     private var active = false
     private var profile: Profile = .cmd
@@ -550,6 +620,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         )
         u.onCloseItem = { [weak self] i in self?.closeItem(at: i) }
         u.onTileItem = { [weak self] i in self?.tileItem(at: i) }
+        u.onPickFilter = { [weak self] i in self?.setFilter(index: i) }
         return u
     }()
 
@@ -675,6 +746,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
             case 46: minimizeSelected()                 // M
             case 4: hideSelected()                      // H
             case 1: cycleAudioSelected()                // S: ses cihazı ata
+            case 0, 10, 50: cycleFilter(shift ? -1 : 1) // A ya da Tab'ın üstündeki tuş: uygulama filtresi
             default: break
             }
             return true
@@ -697,10 +769,12 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     }
 
     private func begin(reverse: Bool) {
-        items = WindowList.build(mru: mru, showMin: profile.showMinimized)
-        guard !items.isEmpty else { return }
+        allItems = WindowList.build(mru: mru, showMin: profile.showMinimized)
+        guard !allItems.isEmpty else { return }
+        items = filtered()
         active = true
-        selected = items.count > 1 ? (reverse ? items.count - 1 : 1) : 0
+        selected = startIndex(reverse: reverse)
+        ui.filterBar = filterBarModel()
         let previews = previewsOn
         ui.previews = previews
         ui.listMode = profile.list
@@ -712,7 +786,9 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         thumbCache = thumbCache.filter { live.contains($0.key) }
 
         if previews, #available(macOS 14.0, *) {
-            let wids = items.prefix(48).filter { $0.wid != 0 && !$0.minimized }.map(\.wid)
+            // Filtre panelde değişebilir: tüm pencerelerin önizlemeleri alınır (sıra: önce görünenler)
+            let ordered = items + allItems.filter { a in !items.contains { $0.wid == a.wid && $0.pid == a.pid } }
+            let wids = ordered.prefix(48).filter { $0.wid != 0 && !$0.minimized }.map(\.wid)
             let box = ui.thumbBox
             let scale = NSScreen.main?.backingScaleFactor ?? 2
             captureTask = Task { [weak self] in
@@ -733,6 +809,64 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         }
         showWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: work)
+    }
+
+    // MARK: Uygulama filtresi (ör. ⌥Tab sadece Chrome pencereleri)
+
+    /// Filtrede seçilebilecek uygulamalar: listedeki sıraya göre, her uygulama bir kez
+    private var filterApps: [NSRunningApplication] {
+        var seen = Set<pid_t>(), out: [NSRunningApplication] = []
+        for it in allItems where !it.system && it.app.bundleIdentifier != nil && !seen.contains(it.pid) {
+            seen.insert(it.pid); out.append(it.app)
+        }
+        return out
+    }
+
+    /// Filtre uygulanmış liste. Seçili uygulamanın penceresi yoksa tüm pencereler gösterilir.
+    private func filtered() -> [Item] {
+        let f = profile.appFilter
+        guard !f.isEmpty else { return allItems }
+        let list = allItems.filter { $0.app.bundleIdentifier == f }
+        return list.isEmpty ? allItems : list
+    }
+
+    private var filterActive: Bool {
+        let f = profile.appFilter
+        return !f.isEmpty && allItems.contains { $0.app.bundleIdentifier == f }
+    }
+
+    /// İlk seçim: listenin başı şu anki pencereyse bir sonrakinden başla (normal ⌘Tab gibi)
+    private func startIndex(reverse: Bool) -> Int {
+        guard items.count > 1 else { return 0 }
+        if reverse { return items.count - 1 }
+        if filterActive, items.first?.pid != NSWorkspace.shared.frontmostApplication?.processIdentifier { return 0 }
+        return 1
+    }
+
+    private func filterBarModel() -> (names: [String], icons: [NSImage?], current: Int)? {
+        guard filterActive else { return nil }
+        let apps = filterApps
+        let cur = apps.firstIndex { $0.bundleIdentifier == profile.appFilter }.map { $0 + 1 } ?? 0
+        return ([L("Tümü")] + apps.map { $0.localizedName ?? "" }, [nil] + apps.map(\.icon), cur)
+    }
+
+    /// 0 = tüm uygulamalar, 1… = filterApps sırası
+    private func setFilter(index: Int) {
+        guard active else { return }
+        let apps = filterApps
+        profile.appFilter = index <= 0 || index > apps.count ? "" : (apps[index - 1].bundleIdentifier ?? "")
+        items = filtered()
+        selected = startIndex(reverse: false)
+        ui.filterBar = filterBarModel()
+        showWork?.cancel(); showWork = nil
+        ui.show(items, selected: selected, thumbs: thumbCache)
+    }
+
+    private func cycleFilter(_ d: Int) {
+        let n = filterApps.count + 1
+        guard n > 1 else { return }
+        let cur = filterBarModel()?.current ?? 0
+        setFilter(index: ((cur + d) % n + n) % n)
     }
 
     private func step(_ d: Int) {
@@ -767,6 +901,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         captureTask?.cancel(); captureTask = nil
         ui.hide()
         items = []
+        allItems = []
     }
 
     private var current: Item? { items.indices.contains(selected) ? items[selected] : nil }
@@ -781,6 +916,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         guard let it = current else { return }
         it.app.terminate()
         items.removeAll { $0.pid == it.pid }
+        allItems.removeAll { $0.pid == it.pid }
         refresh()
     }
 
@@ -788,6 +924,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         guard let it = current else { return }
         WindowList.close(it)
         items.remove(at: selected)
+        allItems.removeAll { $0.pid == it.pid && $0.wid == it.wid }
         thumbCache[it.wid] = nil
         refresh()
     }
@@ -795,8 +932,13 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     private func minimizeSelected() {
         guard let it = current else { return }
         WindowList.minimize(it)
-        if profile.showMinimized { items[selected].minimized = true }
-        else { items.remove(at: selected); thumbCache[it.wid] = nil }
+        if profile.showMinimized {
+            items[selected].minimized = true
+            if let k = allItems.firstIndex(where: { $0.pid == it.pid && $0.wid == it.wid }) { allItems[k].minimized = true }
+        } else {
+            items.remove(at: selected); thumbCache[it.wid] = nil
+            allItems.removeAll { $0.pid == it.pid && $0.wid == it.wid }
+        }
         refresh()
     }
 
@@ -847,6 +989,12 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     var audioBadge: ((NSRunningApplication) -> (symbol: String, name: String)?)?
     var onCloseItem: ((Int) -> Void)?
     var onTileItem: ((Int) -> Void)?
+    /// Üstte uygulama filtresi çubuğu (nil = gösterme)
+    var filterBar: (names: [String], icons: [NSImage?], current: Int)?
+    var onPickFilter: ((Int) -> Void)?
+    private let barView = FilterBarView()
+    private let barH: CGFloat = 30, barGap: CGFloat = 12
+    private var headerH: CGFloat { filterBar == nil ? 0 : barH + barGap }
     /// Önizleme yüksekliği (ekrana göre ayarlanır); genişlik pencerenin oranına göre değişir.
     private(set) var thumbH: CGFloat = 170
     private var screen: NSScreen?
@@ -899,6 +1047,19 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         sheen.autoresizingMask = [.width, .height]
         glass.addSubview(sheen)
         panel.contentView = glass
+        barView.onPick = { [weak self] i in self?.onPickFilter?(i) }
+    }
+
+    /// Filtre çubuğunu panelin üstüne yerleştir; panel genişliği en az çubuk kadar olsun.
+    private var minWidthForBar: CGFloat {
+        guard let fb = filterBar else { return 0 }
+        return FilterBarView.width(names: fb.names) + pad * 2
+    }
+    private func placeBar(w: CGFloat, h: CGFloat) {
+        guard let fb = filterBar else { barView.removeFromSuperview(); return }
+        barView.configure(names: fb.names, icons: fb.icons, current: fb.current)
+        barView.frame = NSRect(x: pad, y: h - pad - barH, width: w - pad * 2, height: barH)
+        if barView.superview == nil { glass.addSubview(barView) }
     }
 
     /// Pencere sunucusu tamponunu ve blur katmanını şimdiden oluştur:
@@ -978,7 +1139,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
 
         // Satırlara yerleştir (pencere oranına göre değişken genişlik, AltTab gibi)
         let maxRowW = (vf.width * 0.92 - pad * 2).rounded(.down)
-        let maxRows = max(1, Int((vf.height * 0.88 - pad * 2 + gap) / (cellH + gap)))
+        let maxRows = max(1, Int((vf.height * 0.88 - pad * 2 - headerH + gap) / (cellH + gap)))
         var rowList: [[Int]] = [[]]
         var widths: [CGFloat] = []
         var rowW: CGFloat = 0
@@ -997,14 +1158,15 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         func width(of row: [Int]) -> CGFloat { row.reduce(0) { $0 + widths[$1] } + CGFloat(max(0, row.count - 1)) * gap }
 
         let contentW = rows.map(width).max() ?? 0
-        let w = (contentW + pad * 2).rounded()
-        let h = (CGFloat(rows.count) * cellH + CGFloat(rows.count - 1) * gap + pad * 2).rounded()
+        let w = max(contentW + pad * 2, minWidthForBar).rounded()
+        let h = (CGFloat(rows.count) * cellH + CGFloat(rows.count - 1) * gap + pad * 2 + headerH).rounded()
         place(w, h, in: screen)
+        placeBar(w: w, h: h)
 
         let mode: CellMode = previews ? .preview : .icon
         for (r, row) in rows.enumerated() {
             var cx = ((w - width(of: row)) / 2).rounded()
-            let cy = h - pad - CGFloat(r + 1) * cellH - CGFloat(r) * gap
+            let cy = h - pad - headerH - CGFloat(r + 1) * cellH - CGFloat(r) * gap
             for i in row {
                 let cell = ItemCell(frame: NSRect(x: cx, y: cy, width: widths[i], height: cellH),
                                     item: items[i], index: i, mode: mode,
@@ -1020,7 +1182,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     private func layoutList(_ items: [Item], selected: Int, screen: NSScreen) {
         let vf = screen.visibleFrame
         let scale = screen.backingScaleFactor
-        let maxRows = max(1, Int((vf.height * 0.8 - pad * 2 + listGap) / (listRowH + listGap)))
+        let maxRows = max(1, Int((vf.height * 0.8 - pad * 2 - headerH + listGap) / (listRowH + listGap)))
         let count = min(items.count, maxRows)
         var start = 0
         if items.count > count {
@@ -1029,12 +1191,13 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         visibleRange = start..<(start + count)
         rows = visibleRange.map { [$0] }
 
-        let w = min(640, (vf.width * 0.9).rounded())
-        let h = (CGFloat(count) * listRowH + CGFloat(max(0, count - 1)) * listGap + pad * 2).rounded()
+        let w = max(min(640, (vf.width * 0.9).rounded()), min(minWidthForBar, (vf.width * 0.9).rounded()))
+        let h = (CGFloat(count) * listRowH + CGFloat(max(0, count - 1)) * listGap + pad * 2 + headerH).rounded()
         place(w, h, in: screen)
+        placeBar(w: w, h: h)
 
         for (k, i) in visibleRange.enumerated() {
-            let y = h - pad - CGFloat(k + 1) * listRowH - CGFloat(k) * listGap
+            let y = h - pad - headerH - CGFloat(k + 1) * listRowH - CGFloat(k) * listGap
             let cell = ItemCell(frame: NSRect(x: pad, y: y, width: w - pad * 2, height: listRowH),
                                 item: items[i], index: i, mode: .list,
                                 thumb: nil, scale: scale, titleH: titleH, inset: inset,
@@ -1074,6 +1237,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     func hitsCard(_ p: NSPoint) -> Bool? {
         guard panel.isVisible, panel.frame.contains(p) else { return nil }
         let local = NSPoint(x: p.x - panel.frame.minX, y: p.y - panel.frame.minY)
+        if barView.superview != nil, barView.frame.contains(local) { return true }
         return cells.contains { $0.frame.contains(local) }
     }
 
@@ -1088,6 +1252,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
 
     func hide() {
         panel.orderOut(nil)
+        barView.removeFromSuperview()
         cells.forEach { $0.removeFromSuperview() }
         cells.removeAll()
         rows.removeAll()
@@ -1435,6 +1600,82 @@ final class ItemCell: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { frame.contains(point) ? self : nil }
 }
 
+
+/// Panelin üstündeki uygulama filtresi: "Tümü · Chrome · Kod Düzenleyici …" çipleri.
+final class FilterBarView: NSView {
+    var onPick: ((Int) -> Void)?
+    private var names: [String] = []
+    private var icons: [NSImage?] = []
+    private var current = 0
+    private var rects: [NSRect] = []
+
+    static let font = NSFont.systemFont(ofSize: 12.5, weight: .semibold)
+    static let hint = "A ⇄"
+    private static let chipH: CGFloat = 28, iconS: CGFloat = 18, padX: CGFloat = 11, spacing: CGFloat = 6
+
+    static func chipWidth(_ name: String, icon: Bool) -> CGFloat {
+        let tw = min(150, (name as NSString).size(withAttributes: [.font: font]).width)
+        return ceil(tw + padX * 2 + (icon ? iconS + 6 : 0))
+    }
+    static func width(names: [String]) -> CGFloat {
+        let chips = names.enumerated().reduce(CGFloat(0)) { $0 + chipWidth($1.element, icon: $1.offset > 0) }
+        let hintW = (hint as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 11, weight: .medium)]).width + 14
+        return chips + CGFloat(max(0, names.count - 1)) * spacing + hintW
+    }
+
+    func configure(names: [String], icons: [NSImage?], current: Int) {
+        self.names = names; self.icons = icons; self.current = current
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        rects.removeAll()
+        let hintAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11, weight: .medium),
+                                                        .foregroundColor: NSColor.white.withAlphaComponent(0.45)]
+        let hintW = (Self.hint as NSString).size(withAttributes: hintAttrs).width
+        let total = Self.width(names: names)
+        var x = max(0, (bounds.width - total) / 2)
+        let y = (bounds.height - Self.chipH) / 2
+        for (i, n) in names.enumerated() {
+            let hasIcon = i > 0
+            let w = Self.chipWidth(n, icon: hasIcon)
+            let r = NSRect(x: x, y: y, width: w, height: Self.chipH)
+            rects.append(r)
+            let path = NSBezierPath(roundedRect: r.insetBy(dx: 0.5, dy: 0.5), xRadius: Self.chipH / 2, yRadius: Self.chipH / 2)
+            if i == current {
+                NSColor.white.withAlphaComponent(0.22).setFill(); path.fill()
+                NSColor.controlAccentColor.setStroke(); path.lineWidth = 1.5; path.stroke()
+            } else {
+                NSColor.white.withAlphaComponent(0.08).setFill(); path.fill()
+            }
+            var tx = r.minX + Self.padX
+            if hasIcon, let img = icons[safe: i] ?? nil {
+                img.draw(in: NSRect(x: tx, y: r.midY - Self.iconS / 2, width: Self.iconS, height: Self.iconS))
+                tx += Self.iconS + 6
+            }
+            let attrs: [NSAttributedString.Key: Any] = [.font: Self.font,
+                .foregroundColor: NSColor.white.withAlphaComponent(i == current ? 1 : 0.7)]
+            let s = n as NSString
+            let sz = s.size(withAttributes: attrs)
+            s.draw(with: NSRect(x: tx, y: r.midY - sz.height / 2, width: min(150, sz.width), height: sz.height),
+                   options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: attrs)
+            x += w + Self.spacing
+        }
+        (Self.hint as NSString).draw(at: NSPoint(x: x + 8, y: (bounds.height - 13) / 2), withAttributes: hintAttrs)
+        _ = hintW
+    }
+
+    override func mouseDown(with event: NSEvent) {}
+    override func mouseUp(with event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        if let i = rects.firstIndex(where: { $0.contains(p) }) { onPick?(i) }
+    }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+private extension Array {
+    subscript(safe i: Int) -> Element? { indices.contains(i) ? self[i] : nil }
+}
 
 /// macOS pencere düğmesi gibi küçük yuvarlak düğme (kırmızı kapat / bölme).
 final class DotView: NSView {

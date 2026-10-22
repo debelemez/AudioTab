@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.3
+
+- Limit ⌘Tab / ⌥Tab to one app (e.g. only Chrome windows); press A in the panel to switch apps
+- New Chrome windows from another profile or desktop now show up right away
+
 ## 2.3.2
 
 - New Versions tab in Settings: what changed in every release

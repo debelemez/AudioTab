@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.3", items: [
+            ("⌘Tab / ⌥Tab'ı tek uygulamaya sınırla (ör. sadece Chrome pencereleri); panel açıkken A ile uygulamayı değiştir",
+             "Limit ⌘Tab / ⌥Tab to one app (e.g. only Chrome windows); press A in the panel to switch apps"),
+            ("Chrome'da başka profilde ya da başka masaüstünde yeni açılan pencereler artık hemen listede",
+             "New Chrome windows from another profile or desktop now show up right away"),
+        ]),
         ChangelogEntry(version: "2.3.2", items: [
             ("Ayarlara Sürümler sekmesi: tüm sürümlerin değişiklik listesi",
              "New Versions tab in Settings: what changed in every release"),

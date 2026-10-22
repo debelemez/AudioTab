@@ -279,6 +279,11 @@ private let englishStrings: [String: String] = [
     "Yeni sürümün imzası geçersiz": "The new version's signature is invalid",
     "Mevcut uygulamanın imzası okunamadı": "Couldn't read the current app's signature",
     "Paketteki sürüm (%@) beklenenle uyuşmuyor": "The version inside the package (%@) doesn't match the release",
+    // Uygulama filtresi
+    "Hangi uygulamalar": "Which apps",
+    "Sadece seçilen uygulamanın pencereleri arasında geçer (ör. tüm Chrome pencereleri). Panel açıkken A ile değiştirebilirsin.": "Switch only between windows of the selected app (e.g. all Chrome windows). Press A while the panel is open to change it.",
+    "Tüm uygulamalar": "All apps",
+    "Sadece bir uygulamanın pencereleri: sonraki / önceki uygulama": "Only one app's windows: next / previous app",
     // Sürümler sekmesi
     "Sürümler": "Versions",
     "AudioTab %@ yüklensin mi?": "Install AudioTab %@?",
