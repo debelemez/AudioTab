@@ -38,7 +38,7 @@ Boştayken hiçbir şey yapmaz: timer yok, arka planda tarama yok, internete sad
 - Seçili kart vurgu renginde çerçeveyle belirgin olur.
 - Kartın sağ üstünde **kırmızı nokta** pencereyi kapatır, yanındaki **bölme düğmesi** pencereyi ekranın bir bölmesine taşır.
 - Uygulamaya ses cihazı atadıysan kartta küçük bir rozet olarak görünür; panel açıkken **S** ile değiştirilir.
-- Chrome, Safari, Arc, Brave, Edge, Firefox gibi tarayıcıların **tüm pencereleri** her zaman listede olur: başka profiller, başka masaüstleri ve tam ekrandakiler dahil.
+- Chrome, Safari, Arc, Brave, Edge, Firefox gibi tarayıcıların **tüm pencereleri** her zaman listede olur: başka profiller, başka masaüstleri ve tam ekrandakiler dahil. Chrome, Brave, Edge ve Vivaldi kartlarında pencerenin profili küçük bir rozetle yazar.
 - Boşluğa tıklayınca panel kapanır.
 
 ### Gruplu görünüm (isteğe bağlı)

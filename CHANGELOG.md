@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.11
+
+- Browser cards show which profile the window belongs to in a small badge (Chrome, Brave, Edge, Vivaldi)
+
 ## 2.3.10
 
 - Finder favorites now come straight from Finder's sidebar Favorites, in the same order

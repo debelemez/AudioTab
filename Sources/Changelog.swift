@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.11", items: [
+            ("Tarayıcı kartlarında pencerenin hangi profile ait olduğu küçük bir rozetle yazıyor (Chrome, Brave, Edge, Vivaldi)",
+             "Browser cards show which profile the window belongs to in a small badge (Chrome, Brave, Edge, Vivaldi)"),
+        ]),
         ChangelogEntry(version: "2.3.10", items: [
             ("Finder favorileri artık doğrudan Finder'ın kenar çubuğundaki Favoriler listesinden, aynı sırayla geliyor",
              "Finder favorites now come straight from Finder's sidebar Favorites, in the same order"),

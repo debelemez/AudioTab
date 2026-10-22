@@ -484,6 +484,7 @@ enum AX {
                 if let n = w[kCGWindowNumber as String] as? Int { alive.insert(CGWindowID(n)) }
             }
             WindowRegistry.shared.prune(alive: alive)
+            BrowserProfiles.shared.prune(alive: alive)
             let real = realWindows(all)
             for i in infos.indices where infos[i].deep { infos[i].expected = real[infos[i].pid] ?? [:] }
         }
@@ -790,6 +791,14 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         applyGrouping()
         ui.filterBar = filterBarModel()
         ui.favorites = Favorites.enabled(profile) ? Favorites.sections(profile) : []
+        ui.profileFor = { BrowserProfiles.shared.cached($0) }
+        // Profili henüz bilinmeyen tarayıcı pencereleri: arka planda bul, bulununca kartları yenile
+        BrowserProfiles.shared.resolve(allItems) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.active, self.ui.isVisible else { return }
+                self.ui.show(self.items, selected: self.selected, thumbs: self.thumbCache)
+            }
+        }
         let previews = previewsOn
         ui.previews = previews
         ui.listMode = profile.list
@@ -1059,6 +1068,8 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     /// En sağda kenar çubuğu: sık kullanılan klasörler / Finder favorileri (boşsa gösterilmez)
     var favorites: [(title: String, items: [Favorites.Entry])] = []
     var onOpenFavorite: ((URL) -> Void)?
+    /// Tarayıcı penceresinin profili (küçük rozet olarak gösterilir)
+    var profileFor: ((Item) -> BrowserProfiles.Profile?)?
     private let sidebar = FavoritesSidebarView()
     private var sideExtra: CGFloat { favorites.isEmpty ? 0 : FavoritesSidebarView.width + 6 }
     private func sideMinH(_ screen: NSScreen) -> CGFloat {
@@ -1264,7 +1275,8 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
                                     item: items[i], index: i, mode: mode,
                                     thumb: thumbs[items[i].wid], scale: scale,
                                     titleH: titleH, inset: inset,
-                                    audio: audioBadge?(items[i].app))
+                                    audio: audioBadge?(items[i].app),
+                                    profile: profileFor?(items[i]))
                 add(cell)
                 cx += widths[i] + gap
             }
@@ -1362,7 +1374,8 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
                                         thumb: thumbs[items[i].wid], scale: scale,
                                         titleH: titleH, inset: inset,
                                         audio: audioBadge?(items[i].app),
-                                        folderName: deco.folder, project: deco.project)
+                                        folderName: deco.folder, project: deco.project,
+                                        profile: profileFor?(items[i]))
                     add(cell)
                     y -= gap
                 }
@@ -1424,7 +1437,8 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
             let cell = ItemCell(frame: NSRect(x: pad, y: y, width: cw - pad * 2, height: listRowH),
                                 item: items[i], index: i, mode: .list,
                                 thumb: nil, scale: scale, titleH: titleH, inset: inset,
-                                audio: audioBadge?(items[i].app))
+                                audio: audioBadge?(items[i].app),
+                                profile: profileFor?(items[i]))
             add(cell)
         }
     }
@@ -1587,7 +1601,7 @@ final class ItemCell: NSView {
 
     init(frame: NSRect, item: Item, index: Int, mode: CellMode, thumb: CGImage?, scale: CGFloat,
          titleH: CGFloat, inset: CGFloat, audio: (symbol: String, name: String)?,
-         folderName: String? = nil, project: String? = nil) {
+         folderName: String? = nil, project: String? = nil, profile: BrowserProfiles.Profile? = nil) {
         self.index = index
         self.wid = item.wid
         self.dimmed = item.minimized || item.app.isHidden || (item.window == nil && !item.system)
@@ -1646,6 +1660,11 @@ final class ItemCell: NSView {
                 thumbView = tv
                 if let thumb { tv.set(thumb, dimmed: dimmed) } else { tv.placeholder(item.app.icon, dimmed: dimmed) }
                 if let project { addSubview(Self.projectBand(project, app: item.app, in: area)) }
+                else if let profile {
+                    let b = Self.profileBadge(profile)
+                    b.frame.origin = NSPoint(x: area.minX + 6, y: area.minY + 6)
+                    addSubview(b)
+                }
             }
 
         case .icon:
@@ -1668,10 +1687,16 @@ final class ItemCell: NSView {
                 title.frame = NSRect(x: 8, y: 30, width: frame.width - 16, height: 19)
                 addSubview(title)
 
-                let detail = state.isEmpty ? (main == appName ? "" : appName) : state
-                let sub = label(detail, size: 11.5, weight: .regular, alpha: 0.7, align: .center)
-                sub.frame = NSRect(x: 8, y: 12, width: frame.width - 16, height: 15)
-                addSubview(sub)
+                if let profile, state.isEmpty {
+                    let b = Self.profileBadge(profile)
+                    b.frame.origin = NSPoint(x: ((frame.width - b.frame.width) / 2).rounded(), y: 9)
+                    addSubview(b)
+                } else {
+                    let detail = state.isEmpty ? (main == appName ? "" : appName) : state
+                    let sub = label(detail, size: 11.5, weight: .regular, alpha: 0.7, align: .center)
+                    sub.frame = NSRect(x: 8, y: 12, width: frame.width - 16, height: 15)
+                    addSubview(sub)
+                }
             }
 
             if hasDots {
@@ -1710,6 +1735,7 @@ final class ItemCell: NSView {
             addSubview(title)
 
             var detail = item.title == appName ? "" : appName
+            if let profile { detail = detail.isEmpty ? profile.name : "\(detail) · \(profile.name)" }
             if !state.isEmpty { detail = detail.isEmpty ? state : "\(detail) · \(state)" }
             let sub = label(detail, size: 11.5, weight: .regular, alpha: 0.65, align: .left)
             sub.frame = NSRect(x: tx, y: frame.height / 2 - 17, width: max(10, right - tx), height: 15)
@@ -1718,6 +1744,33 @@ final class ItemCell: NSView {
         updateLook()
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    /// Tarayıcı profili rozeti: küçük koyu kapsül, solda profil renginde nokta
+    static func profileBadge(_ p: BrowserProfiles.Profile) -> NSView {
+        let f = NSFont.systemFont(ofSize: 10.5, weight: .semibold)
+        let tw = min(120, ceil((p.name as NSString).size(withAttributes: [.font: f]).width))
+        let h: CGFloat = 18
+        let v = NSView(frame: NSRect(x: 0, y: 0, width: tw + 26, height: h))
+        v.wantsLayer = true
+        v.layer?.cornerRadius = h / 2
+        v.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.55).cgColor
+        v.layer?.borderWidth = 0.5
+        v.layer?.borderColor = NSColor.white.withAlphaComponent(0.28).cgColor
+        let dot = NSView(frame: NSRect(x: 7, y: (h - 7) / 2, width: 7, height: 7))
+        dot.wantsLayer = true
+        dot.layer?.cornerRadius = 3.5
+        dot.layer?.backgroundColor = (p.color ?? NSColor.controlAccentColor).cgColor
+        v.addSubview(dot)
+        let t = NSTextField(labelWithString: p.name)
+        t.font = f
+        t.textColor = NSColor.white.withAlphaComponent(0.95)
+        t.lineBreakMode = .byTruncatingTail
+        t.maximumNumberOfLines = 1
+        t.frame = NSRect(x: 18, y: 2, width: tw, height: 14)
+        v.addSubview(t)
+        v.toolTip = p.name
+        return v
+    }
 
     /// Klasör kartı: önizleme alanında klasör simgesi ve büyük klasör adı
     static func folderCard(_ name: String, frame: NSRect) -> NSView {

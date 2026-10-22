@@ -38,7 +38,7 @@ It does nothing while idle: no timers, no background polling. It only goes onlin
 - The selected card stands out with an accent-colored border.
 - The **red dot** at the top right of a card closes the window. The **split button** next to it moves the window to part of the screen.
 - If you've assigned a sound device to an app, it shows as a small badge on the card. Change it with **S** while the panel is open.
-- **Every window** of your browsers is always listed: Chrome, Safari, Arc, Brave, Edge, Firefox and more. That includes other profiles, other Spaces and full-screen windows.
+- **Every window** of your browsers is always listed: Chrome, Safari, Arc, Brave, Edge, Firefox and more. That includes other profiles, other Spaces and full-screen windows. Chrome, Brave, Edge and Vivaldi cards show the window's profile in a small badge.
 - Click an empty spot to close the panel.
 
 ### Grouped view (optional)
