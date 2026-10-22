@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.16", items: [
+            ("Profil rozeti doğru profili gösteriyor: pencerenin araç çubuğundaki profil düğmesinin adına bakılıyor (yer imleri karıştırılmıyor)",
+             "The profile badge shows the right profile: it reads the profile button in the window's toolbar (bookmarks no longer confuse it)"),
+        ]),
         ChangelogEntry(version: "2.3.15", items: [
             ("Profil rozeti yeniden yapıldı: ad kesilmeden tam yazıyor",
              "Profile badge rebuilt: the name is shown in full, not cut off"),

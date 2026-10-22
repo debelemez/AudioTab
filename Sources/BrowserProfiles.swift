@@ -119,39 +119,59 @@ final class BrowserProfiles: @unchecked Sendable {
         let profiles = names(bid)
         guard profiles.count > 1 else { return nil }     // tek profil: rozet gereksiz
 
-        // Pencere başlığı + araç çubuğundaki düğmelerin adları / açıklamaları / ipuçları
-        var texts: [String] = []
-        if let title: String = AX.attr(w, kAXTitleAttribute) { texts.append(title) }
+        // Araç çubuğundaki düğmeler: adları/açıklamaları ve ekrandaki yatay konumları.
+        // Profil düğmesi araç çubuğunun sağ ucunda durur, adı da tam olarak profil adıdır.
+        struct Btn { let texts: [String]; let x: CGFloat }
+        var buttons: [Btn] = []
         var queueEls: [(AXUIElement, Int)] = [(w, 0)]
         var visited = 0
-        while !queueEls.isEmpty && visited < 500 {
+        while !queueEls.isEmpty && visited < 600 {
             let (el, depth) = queueEls.removeFirst()
             visited += 1
             AXUIElementSetMessagingTimeout(el, 0.05)
             let role: String? = AX.attr(el, kAXRoleAttribute)
             if role == kAXButtonRole as String || role == kAXPopUpButtonRole as String || role == "AXMenuButton" {
+                var texts: [String] = []
                 for k in [kAXTitleAttribute, kAXDescriptionAttribute, kAXHelpAttribute] {
-                    if let s: String = AX.attr(el, k as String), !s.isEmpty { texts.append(s) }
+                    if let s: String = AX.attr(el, k as String), !s.isEmpty {
+                        texts.append(s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+                    }
                 }
+                var x: CGFloat = 0
+                if let v: AXValue = AX.attr(el, kAXPositionAttribute) {
+                    var pt = CGPoint.zero
+                    if AXValueGetValue(v, .cgPoint, &pt) { x = pt.x }
+                }
+                if !texts.isEmpty { buttons.append(Btn(texts: texts, x: x)) }
             }
-            if role == "AXWebArea" || depth >= 7 { continue }   // web içeriğine inme
+            if role == "AXWebArea" || depth >= 8 { continue }   // web içeriğine inme
             if let kids: [AXUIElement] = AX.attr(el, kAXChildrenAttribute) {
                 for k in kids { queueEls.append((k, depth + 1)) }
             }
         }
-        let all = texts.map { $0.lowercased() }
 
-        // Sadece TEK profile uyan ipucuyla karar ver (iki profilde de aynı hesap adı varsa o ipucu sayılmaz)
-        func unique(_ key: (Profile) -> [String], _ match: (String, String) -> Bool) -> Profile? {
-            let hits = profiles.filter { p in
-                key(p).contains { k in !k.isEmpty && all.contains { match($0, k.lowercased()) } }
+        // Bir kurala uyan düğmelerden en sağdakinin profili (yer imleri solda kalır)
+        func pick(_ match: (String, Profile) -> Bool) -> Profile? {
+            var best: (p: Profile, x: CGFloat)?
+            for b in buttons {
+                for p in profiles where b.texts.contains(where: { match($0, p) }) {
+                    if best == nil || b.x > best!.x { best = (p, b.x) }
+                }
             }
-            return hits.count == 1 ? hits[0] : nil
+            return best?.p
         }
-        // 1) e-posta  2) profile verilen ad  3) hesap adı
-        if let p = unique({ [$0.email] }, { $0.contains($1) }) { return p }
-        if let p = unique({ [$0.localName] }, { t, k in t == k || t.hasPrefix(k + " ") || t.hasPrefix(k + "(") || t.hasSuffix(" - " + k) || t.hasSuffix(" – " + k) || t.contains("\n" + k) || t.hasPrefix(k + "\n") }) { return p }
-        if let p = unique({ $0.accountNames }, { t, k in t == k || t.hasPrefix(k + " ") || t.hasPrefix(k + "\n") || t.hasSuffix(" - " + k) }) { return p }
+        let local: (Profile) -> String = { $0.localName.lowercased() }
+        // 1) Düğmenin adı tam olarak profil adı ("Flow 2")
+        if let p = pick({ t, p in !local(p).isEmpty && t == local(p) }) { return p }
+        // 2) "Flow 2 (…)" / "Flow 2\n…" / "…: Flow 2" gibi
+        if let p = pick({ t, p in
+            let k = local(p)
+            return !k.isEmpty && (t.hasPrefix(k + " (") || t.hasPrefix(k + "\n") || t.hasSuffix(": " + k) || t.contains("\n" + k + "\n"))
+        }) { return p }
+        // 3) E-posta (sadece tek profile uyuyorsa)
+        let byMail = profiles.filter { p in !p.email.isEmpty && buttons.contains { $0.texts.contains { $0.contains(p.email.lowercased()) } } }
+        if byMail.count == 1 { return byMail[0] }
+        // Emin değilsek rozet yok (yanlış ad yazmaktansa)
         return nil
     }
 
@@ -194,7 +214,7 @@ final class BrowserProfiles: @unchecked Sendable {
                     if (counts[shown.lowercased()] ?? 0) > 1, !r.email.isEmpty { shown = r.email }
                     guard !shown.isEmpty else { continue }
                     list.append(Profile(name: shown, color: r.color, id: "\(bid)|\(r.dir)", autoName: shown,
-                                        email: r.email, localName: r.isDefault ? "" : r.local,
+                                        email: r.email, localName: r.local,
                                         accountNames: [r.full, r.given].filter { !$0.isEmpty }))
                 }
             }

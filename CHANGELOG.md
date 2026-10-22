@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.16
+
+- The profile badge shows the right profile: it reads the profile button in the window's toolbar (bookmarks no longer confuse it)
+
 ## 2.3.15
 
 - Profile badge rebuilt: the name is shown in full, not cut off
