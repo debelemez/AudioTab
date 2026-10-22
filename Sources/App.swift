@@ -16,6 +16,7 @@ import ServiceManagement
     private var capture: CaptureController!
     private let tiling = TilingController()
     private let zonePicker = ZonePickerController()
+    private let dockDrag = DockDragAccelerator()
     private var permTimer: Timer?
     private var bag = Set<AnyCancellable>()
 
@@ -44,6 +45,7 @@ import ServiceManagement
         let model = SettingsModel(store: store)
         model.onNativeTabChanged = { [weak self] in self?.switcher.applyNative() }
         model.onDeepScanChanged = { [weak self] in self?.switcher.deepScopeChanged() }
+        model.onDockDragChanged = { [weak self] in self?.dockDrag.start() }
         model.onHotkeyChanged = { [weak self] in self?.applyAudioKeySettings() }
         model.onPreviewsChanged = { [weak self, weak model] in
             guard let self, let model else { return }
@@ -111,6 +113,7 @@ import ServiceManagement
         if AXIsProcessTrustedWithOptions(opts) {
             switcher.start()
             applyExtraNative()
+            dockDrag.start()
         } else {
             // Sadece izin verilene kadar çalışır, sonra kendini kapatır.
             permTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
@@ -119,6 +122,7 @@ import ServiceManagement
                     self.permTimer?.invalidate(); self.permTimer = nil
                     self.switcher.start()
                     self.applyExtraNative()
+                    self.dockDrag.start()
                 }
             }
         }

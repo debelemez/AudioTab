@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.9
+
+- Optional ⌘Tab sidebar: your favorite folders and Finder Favorites on the far right, just like in Finder
+- Drag to the Dock: hovering a dragged file over an app in the Dock brings it forward right away (can be turned off)
+
 ## 2.3.8
 
 - In ⌘Tab, press the key above Tab (`) on a card to show only that app's windows; press again for all (temporary). F works too

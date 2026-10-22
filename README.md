@@ -59,6 +59,11 @@ It does nothing while idle: no timers, no background polling. It only goes onlin
 - While the panel is open, press **A** to jump to the next app (**⇧A** for the previous one), or click a chip at the top.
 - Quick filter: on any card, press the key above Tab (**`**, or **F**) to show only that app's windows right away. Press it again to see everything. This is temporary and doesn't change your settings.
 
+### Sidebar and Dock drag
+
+- **Sidebar (optional):** turn on **My favorite folders** and/or **Finder favorites** in Settings › Windows. They appear on the far right of the ⌘Tab panel, like Finder's sidebar. Click one to open it in Finder.
+- **Drag to the Dock:** while dragging a file, hover over an app in the Dock and it comes forward right away (it opens if it isn't running), so you can drop straight into its window. You can turn this off in Settings › Windows.
+
 ## Sound output: ⌘⇧
 
 <img src="docs/images/audio.jpg" alt="Sound output panel" width="900">

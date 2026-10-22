@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.9", items: [
+            ("⌘Tab'da isteğe bağlı kenar çubuğu: sık kullanılan klasörlerin ve Finder favorileri en sağda, Finder'daki gibi",
+             "Optional ⌘Tab sidebar: your favorite folders and Finder Favorites on the far right, just like in Finder"),
+            ("Dock'a sürükle-bırak: dosyayı Dock'taki uygulamanın üstüne getirince uygulama hemen öne gelir (ayarlardan kapatılabilir)",
+             "Drag to the Dock: hovering a dragged file over an app in the Dock brings it forward right away (can be turned off)"),
+        ]),
         ChangelogEntry(version: "2.3.8", items: [
             ("⌘Tab'da bir kartın üstündeyken Tab'ın üstündeki tuş (é): sadece o uygulamanın pencereleri; tekrar basınca hepsi (geçici). F de aynı işi yapar",
              "In ⌘Tab, press the key above Tab (`) on a card to show only that app's windows; press again for all (temporary). F works too"),

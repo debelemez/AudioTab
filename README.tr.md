@@ -59,6 +59,11 @@ Boştayken hiçbir şey yapmaz: timer yok, arka planda tarama yok, internete sad
 - Panel açıkken **A** ile sonraki uygulamaya (**⇧A** ile öncekine) geçersin ya da üstteki çiplere tıklarsın.
 - Hızlı filtre: herhangi bir kartın üstündeyken Tab'ın üstündeki **é** tuşuna (ya da **F**'ye) basınca anında sadece o uygulamanın pencereleri kalır. Tekrar basınca hepsi geri gelir. Bu geçicidir, ayarlarını değiştirmez.
 
+### Kenar çubuğu ve Dock'a sürükleme
+
+- **Kenar çubuğu (isteğe bağlı):** Ayarlar › Pencereler'den **Sık kullanılan klasörlerim** ve/veya **Finder favorileri** açılır. ⌘Tab panelinin en sağında, Finder'ın kenar çubuğu gibi görünür. Tıklayınca Finder'da açılır.
+- **Dock'a sürükleme:** Bir dosyayı sürüklerken Dock'taki uygulamanın üstüne gelince uygulama beklemeden öne gelir (kapalıysa açılır); dosyayı doğrudan penceresine bırakırsın. Ayarlar › Pencereler'den kapatılabilir.
+
 ## Ses çıkışı: ⌘⇧
 
 <img src="docs/images/tr/audio.jpg" alt="Ses çıkışı paneli" width="900">

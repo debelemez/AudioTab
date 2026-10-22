@@ -627,6 +627,10 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         u.onCloseItem = { [weak self] i in self?.closeItem(at: i) }
         u.onTileItem = { [weak self] i in self?.tileItem(at: i) }
         u.onPickFilter = { [weak self] i in self?.setFilter(index: i) }
+        u.onOpenFavorite = { [weak self] url in
+            self?.end()
+            NSWorkspace.shared.open(url)
+        }
         return u
     }()
 
@@ -785,6 +789,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         selected = startIndex(reverse: reverse)
         applyGrouping()
         ui.filterBar = filterBarModel()
+        ui.favorites = Favorites.enabled ? Favorites.sections() : []
         let previews = previewsOn
         ui.previews = previews
         ui.listMode = profile.list
@@ -1051,6 +1056,22 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     /// Üstte uygulama filtresi çubuğu (nil = gösterme)
     var filterBar: (names: [String], icons: [NSImage?], current: Int)?
     var onPickFilter: ((Int) -> Void)?
+    /// En sağda kenar çubuğu: sık kullanılan klasörler / Finder favorileri (boşsa gösterilmez)
+    var favorites: [(title: String, items: [Favorites.Entry])] = []
+    var onOpenFavorite: ((URL) -> Void)?
+    private let sidebar = FavoritesSidebarView()
+    private var sideExtra: CGFloat { favorites.isEmpty ? 0 : FavoritesSidebarView.width + 6 }
+    private func sideMinH(_ screen: NSScreen) -> CGFloat {
+        guard !favorites.isEmpty else { return 0 }
+        return min(FavoritesSidebarView.neededHeight(favorites) + pad * 2 + headerH, screen.visibleFrame.height * 0.88)
+    }
+    /// cw: kartların kapladığı genişlik (sağ boşluk dahil); kenar çubuğu onun sağına
+    private func placeSidebar(cw: CGFloat, h: CGFloat) {
+        guard !favorites.isEmpty else { sidebar.removeFromSuperview(); return }
+        sidebar.configure(favorites)
+        sidebar.frame = NSRect(x: cw - pad / 2, y: pad, width: FavoritesSidebarView.width, height: h - pad * 2 - headerH)
+        if sidebar.superview == nil { glass.addSubview(sidebar) }
+    }
     private let barView = FilterBarView()
     private let barH: CGFloat = 30, barGap: CGFloat = 12
     private var headerH: CGFloat { filterBar == nil ? 0 : barH + barGap }
@@ -1107,6 +1128,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         glass.addSubview(sheen)
         panel.contentView = glass
         barView.onPick = { [weak self] i in self?.onPickFilter?(i) }
+        sidebar.onOpen = { [weak self] u in self?.onOpenFavorite?(u) }
     }
 
     /// Filtre çubuğunu panelin üstüne yerleştir; panel genişliği en az çubuk kadar olsun.
@@ -1206,7 +1228,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         let scale = screen.backingScaleFactor
 
         // Satırlara yerleştir (pencere oranına göre değişken genişlik, AltTab gibi)
-        let maxRowW = (vf.width * 0.92 - pad * 2).rounded(.down)
+        let maxRowW = (vf.width * 0.92 - pad * 2 - sideExtra).rounded(.down)
         let maxRows = max(1, Int((vf.height * 0.88 - pad * 2 - headerH + gap) / (cellH + gap)))
         var rowList: [[Int]] = [[]]
         var widths: [CGFloat] = []
@@ -1226,14 +1248,16 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         func width(of row: [Int]) -> CGFloat { row.reduce(0) { $0 + widths[$1] } + CGFloat(max(0, row.count - 1)) * gap }
 
         let contentW = rows.map(width).max() ?? 0
-        let w = max(contentW + pad * 2, minWidthForBar).rounded()
-        let h = (CGFloat(rows.count) * cellH + CGFloat(rows.count - 1) * gap + pad * 2 + headerH).rounded()
+        let cw = max(contentW + pad * 2, minWidthForBar - sideExtra).rounded()
+        let w = cw + sideExtra
+        let h = max(CGFloat(rows.count) * cellH + CGFloat(rows.count - 1) * gap + pad * 2 + headerH, sideMinH(screen)).rounded()
         place(w, h, in: screen)
         placeBar(w: w, h: h)
+        placeSidebar(cw: cw, h: h)
 
         let mode: CellMode = previews ? .preview : .icon
         for (r, row) in rows.enumerated() {
-            var cx = ((w - width(of: row)) / 2).rounded()
+            var cx = ((cw - width(of: row)) / 2).rounded()
             let cy = h - pad - headerH - CGFloat(r + 1) * cellH - CGFloat(r) * gap
             for i in row {
                 let cell = ItemCell(frame: NSRect(x: cx, y: cy, width: widths[i], height: cellH),
@@ -1255,7 +1279,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     private func layoutGrouped(_ items: [Item], thumbs: [CGWindowID: CGImage], screen: NSScreen) {
         let vf = screen.visibleFrame
         let scale = screen.backingScaleFactor
-        let maxW = (vf.width * 0.94 - pad * 2).rounded(.down)
+        let maxW = (vf.width * 0.94 - pad * 2 - sideExtra).rounded(.down)
         let colGap: CGFloat = 12, secGap: CGFloat = 26   // sütun arası / bölüm arası (çizgi ortada)
 
         var sections: [(group: WindowGroup, idx: [Int])] = []
@@ -1302,13 +1326,15 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         rows = columns                       // ↑↓ sütun içinde, ←→ sütunlar arası (bkz. neighbor)
         visibleRange = 0..<items.count
 
-        let w = max(min(totalW, maxW) + pad * 2, minWidthForBar, 300).rounded()
-        let h = (bodyH + groupHeaderH + pad * 2 + headerH).rounded()
+        let cw = max(min(totalW, maxW) + pad * 2, minWidthForBar - sideExtra, 300).rounded()
+        let w = cw + sideExtra
+        let h = max(bodyH + groupHeaderH + pad * 2 + headerH, sideMinH(screen)).rounded()
         place(w, h, in: screen)
         placeBar(w: w, h: h)
+        placeSidebar(cw: cw, h: h)
 
         let mode: CellMode = previews ? .preview : .icon
-        var x = pad + max(0, (w - pad * 2 - totalW) / 2)
+        var x = pad + max(0, (cw - pad * 2 - totalW) / 2)
         let top = h - pad - headerH
         for (k, s) in laid.enumerated() {
             if k > 0 {
@@ -1386,14 +1412,16 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         visibleRange = start..<(start + count)
         rows = visibleRange.map { [$0] }
 
-        let w = max(min(640, (vf.width * 0.9).rounded()), min(minWidthForBar, (vf.width * 0.9).rounded()))
-        let h = (CGFloat(count) * listRowH + CGFloat(max(0, count - 1)) * listGap + pad * 2 + headerH).rounded()
+        let cw = max(min(640, (vf.width * 0.9).rounded()), min(minWidthForBar - sideExtra, (vf.width * 0.9).rounded()))
+        let w = cw + sideExtra
+        let h = max(CGFloat(count) * listRowH + CGFloat(max(0, count - 1)) * listGap + pad * 2 + headerH, sideMinH(screen)).rounded()
         place(w, h, in: screen)
         placeBar(w: w, h: h)
+        placeSidebar(cw: cw, h: h)
 
         for (k, i) in visibleRange.enumerated() {
             let y = h - pad - headerH - CGFloat(k + 1) * listRowH - CGFloat(k) * listGap
-            let cell = ItemCell(frame: NSRect(x: pad, y: y, width: w - pad * 2, height: listRowH),
+            let cell = ItemCell(frame: NSRect(x: pad, y: y, width: cw - pad * 2, height: listRowH),
                                 item: items[i], index: i, mode: .list,
                                 thumb: nil, scale: scale, titleH: titleH, inset: inset,
                                 audio: audioBadge?(items[i].app))
@@ -1433,6 +1461,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         guard panel.isVisible, panel.frame.contains(p) else { return nil }
         let local = NSPoint(x: p.x - panel.frame.minX, y: p.y - panel.frame.minY)
         if barView.superview != nil, barView.frame.contains(local) { return true }
+        if sidebar.superview != nil, sidebar.frame.contains(local) { return true }
         return cells.contains { $0.frame.contains(local) }
     }
 
@@ -1448,6 +1477,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     func hide() {
         panel.orderOut(nil)
         barView.removeFromSuperview()
+        sidebar.removeFromSuperview()
         headerViews.forEach { $0.removeFromSuperview() }
         headerViews.removeAll()
         cells.forEach { $0.removeFromSuperview() }

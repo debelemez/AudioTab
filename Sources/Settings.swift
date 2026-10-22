@@ -31,6 +31,8 @@ final class SettingsModel: ObservableObject {
     var onDeepScanChanged: () -> Void = {}
     /// ⌘⇧3/4/5/6 veya ⌘< açılıp kapandı → macOS kısayollarını güncelle
     var onShortcutsChanged: () -> Void = {}
+    /// Dock'a sürükle-bırak hızlandırma açılıp kapandı
+    var onDockDragChanged: () -> Void = {}
     /// Güncellemeyi yükle (kayıt sürüyorsa önce bitirilir)
     var onInstallUpdate: (ReleaseInfo?) -> Void = { _ in }
 
@@ -445,6 +447,34 @@ struct SettingsView: View {
             }
         }
         if Profile.allCases.contains(where: { $0.grouped && !$0.list }) { groupedCard }
+        Card(title: L("Kenar çubuğu"), icon: "sidebar.right") {
+            ToggleRow(L("Sık kullanılan klasörlerim"), L("⌘Tab panelinin en sağında, aşağıda eklediğin klasörler"),
+                      isOn: model.bind({ Favorites.showOwn }, { Favorites.showOwn = $0 }))
+            ToggleRow(L("Finder favorileri"), L("Finder'ın kenar çubuğundaki Favoriler, Finder'daki gibi listelenir"),
+                      isOn: model.bind({ Favorites.showFinder }, { Favorites.showFinder = $0 }))
+            if Favorites.showOwn {
+                Divider().opacity(0.4)
+                Row(L("Klasörler"), L("Tıklayınca Finder'da açılır")) {
+                    Button(L("Klasör ekle…")) { addFavoriteFolders() }
+                }
+                let paths = Favorites.folders
+                if paths.isEmpty {
+                    Text(L("Henüz klasör eklemedin.")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
+                } else {
+                    FlowChips(items: paths.map { ChipItem(id: $0, name: FileManager.default.displayName(atPath: $0)) }) { p in
+                        Favorites.remove(p); model.refresh()
+                    }
+                }
+            }
+        }
+        Card(title: L("Dock'a sürükle-bırak"), icon: "dock.arrow.up.rectangle") {
+            ToggleRow(L("Üstüne gelince uygulamayı hemen aç"),
+                      L("Bir dosyayı sürüklerken Dock'taki uygulamanın üstüne gelince beklemeden öne gelir (kapalıysa açılır); dosyayı doğrudan penceresine bırakırsın"),
+                      isOn: model.bind({ DockDragSettings.enabled }, { v in
+                          DockDragSettings.enabled = v
+                          model.onDockDragChanged()
+                      }))
+        }
         Card(title: L("Pencereleri her zaman bul"), icon: "scope") {
             Row(L("Kapsam"), L("Diğer masaüstlerindeki, tam ekrandaki ve arkada kalan pencereleri de kesin gösterir (Chrome profilleri dahil). Arka planda, sadece masaüstü değişince ve uygulama açılınca güncellenir.")) {
                 Picker("", selection: model.bind({ DeepScanScope.current }, { v in
@@ -471,6 +501,19 @@ struct SettingsView: View {
                 shortcut(L("é (Tab'ın üstündeki tuş) · F"), L("Sadece seçili kartın uygulaması / hepsine dön (geçici)"))
                 shortcut("A / ⇧A", L("Sadece bir uygulamanın pencereleri: sonraki / önceki uygulama"))
             }
+        }
+    }
+
+    private func addFavoriteFolders() {
+        let p = NSOpenPanel()
+        p.canChooseDirectories = true
+        p.canChooseFiles = false
+        p.allowsMultipleSelection = true
+        p.prompt = L("Ekle")
+        NSApp.activate(ignoringOtherApps: true)
+        if p.runModal() == .OK {
+            Favorites.add(p.urls)
+            model.refresh()
         }
     }
 
