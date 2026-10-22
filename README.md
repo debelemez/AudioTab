@@ -57,6 +57,7 @@ It does nothing while idle: no timers, no background polling. It only goes onlin
 
 - In **Settings › Windows › Which apps**, pick an app (say, your browser). ⌘Tab or ⌥Tab then switches only between that app's windows, across all profiles.
 - While the panel is open, press **A** to jump to the next app (**⇧A** for the previous one), or click a chip at the top.
+- Quick filter: on any card, press the key above Tab (**`**, or **F**) to show only that app's windows right away. Press it again to see everything. This is temporary and doesn't change your settings.
 
 ## Sound output: ⌘⇧
 

@@ -468,6 +468,7 @@ struct SettingsView: View {
                 shortcut("Esc", L("İptal"))
                 shortcut("W · M · H · Q", L("Kapat · Küçült · Gizle · Çık"))
                 shortcut("S", L("Uygulamanın ses cihazını değiştir"))
+                shortcut(L("é (Tab'ın üstündeki tuş) · F"), L("Sadece seçili kartın uygulaması / hepsine dön (geçici)"))
                 shortcut("A / ⇧A", L("Sadece bir uygulamanın pencereleri: sonraki / önceki uygulama"))
             }
         }

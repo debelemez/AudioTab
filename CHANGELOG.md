@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.8
+
+- In ⌘Tab, press the key above Tab (`) on a card to show only that app's windows; press again for all (temporary). F works too
+- Split-screen panels now close when you click outside them (like Esc)
+
 ## 2.3.7
 
 - Grouped view: at most 2 cards per column; extra windows go to a new column so the panel stays short

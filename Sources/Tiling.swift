@@ -130,6 +130,23 @@ enum Screens {
     }
 }
 
+// MARK: - Dışarı tıklayınca kapat
+
+/// Ekran bölme panelleri açıkken panelin dışına yapılan tıklamayı yakalar (ortak olay dinleyicisinden).
+/// true dönerse tıklama yutulur ve arkadaki uygulamaya gitmez (⌘Tab paneli gibi).
+@MainActor enum OutsideClick {
+    static var handler: ((NSPoint) -> Bool)?
+
+    static func install(for panel: NSPanel, close: @escaping () -> Void) {
+        handler = { [weak panel] p in
+            guard let panel, panel.isVisible else { return false }
+            if panel.frame.contains(p) { return false }
+            close()
+            return true
+        }
+    }
+}
+
 // MARK: - Monitör numaraları (birden fazla monitörde her ekranda büyük numara)
 
 @MainActor final class MonitorBadges {
@@ -494,6 +511,7 @@ final class TilingModel: ObservableObject {
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             MainActor.assumeIsolated { self?.hide() }
         }
+        OutsideClick.install(for: panel) { [weak self] in self?.hide() }
     }
 
     private func removeMonitors() {
@@ -501,6 +519,7 @@ final class TilingModel: ObservableObject {
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         keyMonitor = nil
         clickMonitor = nil
+        OutsideClick.handler = nil
     }
 }
 
@@ -807,6 +826,7 @@ final class ZonePickerModel: ObservableObject {
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             MainActor.assumeIsolated { self?.hide() }
         }
+        OutsideClick.install(for: panel) { [weak self] in self?.hide() }
     }
 
     private func removeMonitors() {
@@ -814,6 +834,7 @@ final class ZonePickerModel: ObservableObject {
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         keyMonitor = nil
         clickMonitor = nil
+        OutsideClick.handler = nil
     }
 }
 

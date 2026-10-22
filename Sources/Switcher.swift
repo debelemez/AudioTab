@@ -100,7 +100,7 @@ enum Profile: String, CaseIterable {
     }
 
     /// Sadece bu uygulamanın pencereleri (paket kimliği). Boş = tüm uygulamalar.
-    /// Panel açıkken A (ya da Tab'ın üstündeki tuş) ile değiştirilebilir.
+    /// Panel açıkken A ile değiştirilebilir.
     var appFilter: String {
         get { UserDefaults.standard.string(forKey: "\(rawValue).appFilter") ?? "" }
         nonmutating set { UserDefaults.standard.set(newValue, forKey: "\(rawValue).appFilter") }
@@ -752,13 +752,16 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
             case 46: minimizeSelected()                 // M
             case 4: hideSelected()                      // H
             case 1: cycleAudioSelected()                // S: ses cihazı ata
-            case 0, 10, 50: cycleFilter(shift ? -1 : 1) // A ya da Tab'ın üstündeki tuş: uygulama filtresi
+            case 0: cycleFilter(shift ? -1 : 1)          // A: filtreyi sonraki / önceki uygulamaya geçir
+            case 10, 50, 3: toggleQuickFilter()          // Tab'ın üstündeki tuş (é / `) ya da F: sadece seçili kartın uygulaması
             default: break
             }
             return true
         case .keyUp:
             return active
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            // Ekran bölme panelleri açıkken dışına tıklanınca kapanır (Esc gibi)
+            if !active, let outside = OutsideClick.handler { return outside(NSEvent.mouseLocation) }
             // Panel açıkken kartların dışına (boşluğa ya da panelin dışına) tıklanınca kapat
             guard active else { return false }
             if ui.hitsCard(NSEvent.mouseLocation) == true { return false }   // karta tıklama: kart kendisi işler
@@ -830,16 +833,20 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         return out
     }
 
+    /// F ile o an açılan geçici filtre (kaydedilmez, panel kapanınca biter). nil = ayardaki filtre, "" = hepsi
+    private var sessionFilter: String?
+    private var effectiveFilter: String { sessionFilter ?? profile.appFilter }
+
     /// Filtre uygulanmış liste. Seçili uygulamanın penceresi yoksa tüm pencereler gösterilir.
     private func filtered() -> [Item] {
-        let f = profile.appFilter
+        let f = effectiveFilter
         guard !f.isEmpty else { return allItems }
         let list = allItems.filter { $0.app.bundleIdentifier == f }
         return list.isEmpty ? allItems : list
     }
 
     private var filterActive: Bool {
-        let f = profile.appFilter
+        let f = effectiveFilter
         return !f.isEmpty && allItems.contains { $0.app.bundleIdentifier == f }
     }
 
@@ -854,7 +861,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     private func filterBarModel() -> (names: [String], icons: [NSImage?], current: Int)? {
         guard filterActive else { return nil }
         let apps = filterApps
-        let cur = apps.firstIndex { $0.bundleIdentifier == profile.appFilter }.map { $0 + 1 } ?? 0
+        let cur = apps.firstIndex { $0.bundleIdentifier == effectiveFilter }.map { $0 + 1 } ?? 0
         return ([L("Tümü")] + apps.map { $0.localizedName ?? "" }, [nil] + apps.map(\.icon), cur)
     }
 
@@ -862,7 +869,9 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     private func setFilter(index: Int) {
         guard active else { return }
         let apps = filterApps
-        profile.appFilter = index <= 0 || index > apps.count ? "" : (apps[index - 1].bundleIdentifier ?? "")
+        let bid = index <= 0 || index > apps.count ? "" : (apps[index - 1].bundleIdentifier ?? "")
+        // F ile geçici filtre açıksa geçici kalır; değilse seçim ayara kaydedilir (bir sonraki sefer de aynı)
+        if sessionFilter != nil { sessionFilter = bid } else { profile.appFilter = bid }
         items = filtered()
         selected = startIndex(reverse: false)
         applyGrouping()
@@ -885,6 +894,19 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         if let keep, let i = items.firstIndex(where: { $0.pid == keep.pid && $0.wid == keep.wid && $0.title == keep.title }) {
             selected = i
         }
+    }
+
+    /// F: seçili kartın uygulamasının pencerelerine anında daralt; tekrar basınca hepsine dön.
+    /// Geçicidir: ayara yazılmaz, panel kapanınca normale döner. Seçili pencere seçili kalır.
+    private func toggleQuickFilter() {
+        guard active, let it = current, let bid = it.app.bundleIdentifier else { return }
+        sessionFilter = (filterActive && effectiveFilter == bid) ? "" : bid
+        items = filtered()
+        applyGrouping()
+        selected = items.firstIndex { $0.pid == it.pid && $0.wid == it.wid && $0.title == it.title } ?? 0
+        ui.filterBar = filterBarModel()
+        showWork?.cancel(); showWork = nil
+        ui.show(items, selected: selected, thumbs: thumbCache)
     }
 
     private func cycleFilter(_ d: Int) {
@@ -933,6 +955,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         ui.hide()
         items = []
         allItems = []
+        sessionFilter = nil
     }
 
     private var current: Item? { items.indices.contains(selected) ? items[selected] : nil }
@@ -1876,7 +1899,7 @@ final class FilterBarView: NSView {
     private var rects: [NSRect] = []
 
     static let font = NSFont.systemFont(ofSize: 12.5, weight: .semibold)
-    static let hint = "A ⇄"
+    static let hint = "é · A ⇄"
     private static let chipH: CGFloat = 28, iconS: CGFloat = 18, padX: CGFloat = 11, spacing: CGFloat = 6
 
     static func chipWidth(_ name: String, icon: Bool) -> CGFloat {

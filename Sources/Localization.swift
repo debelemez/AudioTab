@@ -296,6 +296,8 @@ private let englishStrings: [String: String] = [
     "Ekle": "Add",
     "Şu an açık proje uygulaması yok. DaVinci, Adobe gibi uygulamalar açılınca otomatik algılanır.": "No project apps are open right now. Apps like DaVinci and Adobe are detected automatically when they open.",
     // Uygulama filtresi
+    "Sadece seçili kartın uygulaması / hepsine dön (geçici)": "Only the selected card's app / back to all (temporary)",
+    "é (Tab'ın üstündeki tuş) · F": "` (key above Tab) · F",
     "Hangi uygulamalar": "Which apps",
     "Sadece seçilen uygulamanın pencereleri arasında geçer (ör. tüm Chrome pencereleri). Panel açıkken A ile değiştirebilirsin.": "Switch only between windows of the selected app (e.g. all Chrome windows). Press A while the panel is open to change it.",
     "Tüm uygulamalar": "All apps",

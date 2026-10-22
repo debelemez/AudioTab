@@ -57,6 +57,7 @@ Boştayken hiçbir şey yapmaz: timer yok, arka planda tarama yok, internete sad
 
 - **Ayarlar › Pencereler › Hangi uygulamalar** kısmından bir uygulama seç (örneğin tarayıcın). ⌘Tab ya da ⌥Tab artık sadece o uygulamanın pencereleri arasında, tüm profiller dahil geçer.
 - Panel açıkken **A** ile sonraki uygulamaya (**⇧A** ile öncekine) geçersin ya da üstteki çiplere tıklarsın.
+- Hızlı filtre: herhangi bir kartın üstündeyken Tab'ın üstündeki **é** tuşuna (ya da **F**'ye) basınca anında sadece o uygulamanın pencereleri kalır. Tekrar basınca hepsi geri gelir. Bu geçicidir, ayarlarını değiştirmez.
 
 ## Ses çıkışı: ⌘⇧
 

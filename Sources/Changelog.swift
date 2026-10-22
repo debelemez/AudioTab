@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.8", items: [
+            ("⌘Tab'da bir kartın üstündeyken Tab'ın üstündeki tuş (é): sadece o uygulamanın pencereleri; tekrar basınca hepsi (geçici). F de aynı işi yapar",
+             "In ⌘Tab, press the key above Tab (`) on a card to show only that app's windows; press again for all (temporary). F works too"),
+            ("Ekran bölme panelleri de dışına tıklayınca kapanıyor (Esc gibi)",
+             "Split-screen panels now close when you click outside them (like Esc)"),
+        ]),
         ChangelogEntry(version: "2.3.7", items: [
             ("Gruplu görünümde her sütunda en fazla 2 kart; fazlası yana geçer, panel aşağı uzamaz",
              "Grouped view: at most 2 cards per column; extra windows go to a new column so the panel stays short"),
