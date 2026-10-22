@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.15
+
+- Profile badge rebuilt: the name is shown in full, not cut off
+- Settings › Windows › Browser profiles: choose the name shown on each profile's badge
+
 ## 2.3.14
 
 - Fixed the 2.3.13 build error (version series, the update window and notifications ship with this version)

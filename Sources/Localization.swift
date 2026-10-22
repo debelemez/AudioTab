@@ -329,6 +329,8 @@ private let englishStrings: [String: String] = [
     "Tekrar dene": "Try again",
     "AudioTab güncellemesi hazır": "AudioTab update ready",
     "Sürüm %@ yüklenmeye hazır. Yüklemek için tıkla.": "Version %@ is ready to install. Click to install.",
+    "Tarayıcı profilleri": "Browser profiles",
+    "⌘Tab'daki profil rozetinde yazacak ad. Boş bırakırsan tarayıcıdaki profil adı kullanılır.": "The name shown on the profile badge in ⌘Tab. Leave it empty to use the browser's profile name.",
     // Fare
     "Fare": "Mouse",
     "Finder'da yan tuşlarla geri / ileri": "Back / forward in Finder with the side buttons",

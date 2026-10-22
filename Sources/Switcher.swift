@@ -1752,32 +1752,10 @@ final class ItemCell: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    /// Tarayıcı profili rozeti: küçük koyu kapsül, solda profil renginde nokta
+    /// Tarayıcı profili rozeti: küçük koyu kapsül, solda profil renginde nokta.
+    /// Yazı doğrudan çizilir (etiket kutusunun iç boşluğu yüzünden kısalmasın).
     static func profileBadge(_ p: BrowserProfiles.Profile, maxWidth: CGFloat = 200) -> NSView {
-        let f = NSFont.systemFont(ofSize: 10.5, weight: .semibold)
-        let t = NSTextField(labelWithString: p.name)
-        t.font = f
-        // Etiketin kendi iç boşluğu da hesaba katılsın (yoksa 2 harf sonra "…" oluyordu)
-        let tw = max(20, min(170, maxWidth - 26, ceil(t.intrinsicContentSize.width) + 2))
-        let h: CGFloat = 18
-        let v = NSView(frame: NSRect(x: 0, y: 0, width: tw + 26, height: h))
-        v.wantsLayer = true
-        v.layer?.cornerRadius = h / 2
-        v.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.55).cgColor
-        v.layer?.borderWidth = 0.5
-        v.layer?.borderColor = NSColor.white.withAlphaComponent(0.28).cgColor
-        let dot = NSView(frame: NSRect(x: 7, y: (h - 7) / 2, width: 7, height: 7))
-        dot.wantsLayer = true
-        dot.layer?.cornerRadius = 3.5
-        dot.layer?.backgroundColor = (p.color ?? NSColor.controlAccentColor).cgColor
-        v.addSubview(dot)
-        t.textColor = NSColor.white.withAlphaComponent(0.95)
-        t.lineBreakMode = .byTruncatingTail
-        t.maximumNumberOfLines = 1
-        t.frame = NSRect(x: 17, y: 2, width: tw, height: 14)
-        v.addSubview(t)
-        v.toolTip = p.name
-        return v
+        ProfileBadgeView(name: p.name, color: p.color ?? .controlAccentColor, maxWidth: maxWidth)
     }
 
     /// Klasör kartı: önizleme alanında klasör simgesi ve büyük klasör adı
@@ -1980,6 +1958,38 @@ final class ItemCell: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { frame.contains(point) ? self : nil }
 }
 
+
+/// Profil rozeti: koyu kapsül + renkli nokta + ad (gerekirse "…" ile kısalır, ama ad sığıyorsa tam yazar)
+final class ProfileBadgeView: NSView {
+    private let name: String
+    private let color: NSColor
+    private static let font = NSFont.systemFont(ofSize: 10.5, weight: .semibold)
+    private static let h: CGFloat = 18
+
+    init(name: String, color: NSColor, maxWidth: CGFloat) {
+        self.name = name
+        self.color = color
+        let tw = ceil((name as NSString).size(withAttributes: [.font: Self.font]).width)
+        let w = min(max(40, maxWidth), tw + 27)
+        super.init(frame: NSRect(x: 0, y: 0, width: w, height: Self.h))
+        toolTip = name
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }   // tıklamayı kart yönetir
+
+    override func draw(_ dirtyRect: NSRect) {
+        let r = bounds.insetBy(dx: 0.25, dy: 0.25)
+        let pill = NSBezierPath(roundedRect: r, xRadius: r.height / 2, yRadius: r.height / 2)
+        NSColor.black.withAlphaComponent(0.58).setFill(); pill.fill()
+        NSColor.white.withAlphaComponent(0.28).setStroke(); pill.lineWidth = 0.5; pill.stroke()
+        color.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 7, y: (bounds.height - 7) / 2, width: 7, height: 7)).fill()
+        let attrs: [NSAttributedString.Key: Any] = [.font: Self.font, .foregroundColor: NSColor.white.withAlphaComponent(0.95)]
+        let sz = (name as NSString).size(withAttributes: attrs)
+        (name as NSString).draw(with: NSRect(x: 18, y: (bounds.height - sz.height) / 2, width: bounds.width - 24, height: sz.height),
+                                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: attrs)
+    }
+}
 
 /// Panelin üstündeki uygulama filtresi: "Tümü · Chrome · Kod Düzenleyici …" çipleri.
 final class FilterBarView: NSView {

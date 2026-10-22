@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.15", items: [
+            ("Profil rozeti yeniden yapıldı: ad kesilmeden tam yazıyor",
+             "Profile badge rebuilt: the name is shown in full, not cut off"),
+            ("Ayarlar › Pencereler › Tarayıcı profilleri: her profilin rozetinde yazacak adı kendin belirleyebilirsin",
+             "Settings › Windows › Browser profiles: choose the name shown on each profile's badge"),
+        ]),
         ChangelogEntry(version: "2.3.14", items: [
             ("2.3.13'ün derleme hatası düzeltildi (sürüm serileri, güncelleme penceresi ve bildirim bu sürümle geliyor)",
              "Fixed the 2.3.13 build error (version series, the update window and notifications ship with this version)"),

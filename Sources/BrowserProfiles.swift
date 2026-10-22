@@ -11,9 +11,14 @@ final class BrowserProfiles: @unchecked Sendable {
     static let shared = BrowserProfiles()
 
     struct Profile {
-        /// Rozette yazan ad: Chrome'da profile verdiğin ad (yoksa hesap adı; aynıysa e-posta ile ayrılır)
-        let name: String
+        /// Rozette yazan ad: Ayarlar'da verdiğin ad, yoksa Chrome'daki profil adı
+        /// (o da yoksa hesap adı; aynıysa e-posta ile ayrılır)
+        var name: String
         let color: NSColor?
+        /// "paket kimliği|profil klasörü" (ör. "com.google.Chrome|Profile 1"): Ayarlar'daki özel ad bununla saklanır
+        var id = ""
+        /// Otomatik bulunan ad (özel ad verilmemişse rozette bu yazar)
+        var autoName = 
         /// Pencereyle eşleştirmek için: e-posta (en ayırt edici), profil adı, hesap adı
         var email = ""
         var localName = ""
@@ -39,10 +44,44 @@ final class BrowserProfiles: @unchecked Sendable {
         return roots.contains { b.hasPrefix($0.0) }
     }
 
-    /// ⌘Tab anında: bilinen profil (yoksa nil)
+    /// ⌘Tab anında: bilinen profil (yoksa nil). Ayarlar'da özel ad verildiyse o yazar.
     func cached(_ item: Item) -> Profile? {
         lock.lock(); defer { lock.unlock() }
-        return byWindow[item.wid]
+        guard var p = byWindow[item.wid] else { return nil }
+        p.name = Self.label(for: p)
+        return p
+    }
+
+    // MARK: Ayarlar'dan özel adlar
+
+    private static let labelsKey = "browserProfiles.labels"
+    static var labels: [String: String] {
+        get { UserDefaults.standard.dictionary(forKey: labelsKey) as? [String: String] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: labelsKey) }
+    }
+    static func label(for p: Profile) -> String {
+        let custom = labels[p.id]?.trimmingCharacters(in: .whitespaces) ?? ""
+        return custom.isEmpty ? p.autoName : custom
+    }
+    static func setLabel(_ s: String, for p: Profile) {
+        var l = labels
+        let v = s.trimmingCharacters(in: .whitespaces)
+        if v.isEmpty { l[p.id] = nil } else { l[p.id] = v }
+        labels = l
+    }
+
+    /// Ayarlar için: açık desteklenen tarayıcılar ve profilleri
+    struct BrowserEntry: Identifiable { let bundle: String; let app: String; let profiles: [Profile]; var id: String { bundle } }
+
+    func browsersForSettings() -> [BrowserEntry] {
+        var seen = Set<String>()
+        var out: [BrowserEntry] = []
+        for app in NSWorkspace.shared.runningApplications where Self.supports(app) {
+            guard let b = app.bundleIdentifier, seen.insert(b).inserted else { continue }
+            let list = names(b, force: true)
+            if !list.isEmpty { out.append(BrowserEntry(bundle: b, app: app.localizedName ?? b, profiles: list)) }
+        }
+        return out
     }
 
     /// Bilinmeyen tarayıcı pencerelerinin profilini arka planda bul; bulununca done çağrılır (ana iş parçacığında)
@@ -117,9 +156,9 @@ final class BrowserProfiles: @unchecked Sendable {
     }
 
     /// Tarayıcının profil adları (ve varsa tema rengi), Local State'ten
-    private func names(_ bid: String) -> [Profile] {
+    private func names(_ bid: String, force: Bool = false) -> [Profile] {
         lock.lock()
-        if let c = namesCache[bid], Date().timeIntervalSince(c.date) < 60 { lock.unlock(); return c.list }
+        if !force, let c = namesCache[bid], Date().timeIntervalSince(c.date) < 60 { lock.unlock(); return c.list }
         lock.unlock()
         var list: [Profile] = []
         if let rel = Self.roots.first(where: { bid.hasPrefix($0.0) })?.1 {
@@ -128,9 +167,9 @@ final class BrowserProfiles: @unchecked Sendable {
             if let data = try? Data(contentsOf: f),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let cache = (json["profile"] as? [String: Any])?["info_cache"] as? [String: [String: Any]] {
-                struct Raw { let local: String; let isDefault: Bool; let given: String; let full: String; let email: String; let color: NSColor? }
+                struct Raw { let dir: String; let local: String; let isDefault: Bool; let given: String; let full: String; let email: String; let color: NSColor? }
                 var raws: [Raw] = []
-                for (_, info) in cache {
+                for (dir, info) in cache.sorted(by: { $0.key < $1.key }) {
                     let local = info["name"] as? String ?? ""
                     let email = info["user_name"] as? String ?? ""
                     var color: NSColor?
@@ -139,7 +178,7 @@ final class BrowserProfiles: @unchecked Sendable {
                         color = NSColor(srgbRed: CGFloat((v >> 16) & 0xff) / 255, green: CGFloat((v >> 8) & 0xff) / 255,
                                         blue: CGFloat(v & 0xff) / 255, alpha: 1)
                     }
-                    raws.append(Raw(local: local, isDefault: info["is_using_default_name"] as? Bool ?? false,
+                    raws.append(Raw(dir: dir, local: local, isDefault: info["is_using_default_name"] as? Bool ?? false,
                                     given: info["gaia_given_name"] as? String ?? "", full: info["gaia_name"] as? String ?? "",
                                     email: email, color: color))
                 }
@@ -154,8 +193,8 @@ final class BrowserProfiles: @unchecked Sendable {
                     // İki profil aynı adı gösteriyorsa e-postayla ayır
                     if (counts[shown.lowercased()] ?? 0) > 1, !r.email.isEmpty { shown = r.email }
                     guard !shown.isEmpty else { continue }
-                    list.append(Profile(name: shown, color: r.color, email: r.email,
-                                        localName: r.isDefault ? "" : r.local,
+                    list.append(Profile(name: shown, color: r.color, id: "\(bid)|\(r.dir)", autoName: shown,
+                                        email: r.email, localName: r.isDefault ? "" : r.local,
                                         accountNames: [r.full, r.given].filter { !$0.isEmpty }))
                 }
             }

@@ -511,6 +511,7 @@ struct SettingsView: View {
                 }
             }
         }
+        browserProfilesCard
         Card(title: L("Panelde kısayollar"), icon: "keyboard") {
             VStack(alignment: .leading, spacing: 5) {
                 shortcut("Tab / ⇧Tab", L("İleri / geri"))
@@ -541,6 +542,33 @@ struct SettingsView: View {
             } else {
                 FlowChips(items: paths.map { ChipItem(id: $0, name: FileManager.default.displayName(atPath: $0)) }) { path in
                     Favorites.remove(path, from: p); model.refresh()
+                }
+            }
+        }
+    }
+
+    /// Tarayıcı profilleri: rozette yazacak adı buradan değiştir (boş bırakırsan otomatik ad)
+    @ViewBuilder private var browserProfilesCard: some View {
+        let browsers = BrowserProfiles.shared.browsersForSettings().filter { $0.profiles.count > 1 }
+        if !browsers.isEmpty {
+            Card(title: L("Tarayıcı profilleri"), icon: "person.crop.circle") {
+                Text(L("⌘Tab'daki profil rozetinde yazacak ad. Boş bırakırsan tarayıcıdaki profil adı kullanılır."))
+                    .font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
+                ForEach(browsers) { b in
+                    Text(b.app).font(.system(size: 12, weight: .bold)).padding(.top, 4)
+                    ForEach(b.profiles, id: \.id) { p in
+                        HStack(spacing: 10) {
+                            Circle().fill(Color(nsColor: p.color ?? .controlAccentColor)).frame(width: 9, height: 9)
+                            TextField(p.autoName, text: model.bind({ BrowserProfiles.labels[p.id] ?? "" },
+                                                                   { BrowserProfiles.setLabel($0, for: p) }))
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 200)
+                            Text([p.accountNames.first, p.email.isEmpty ? nil : p.email].compactMap { $0 }.joined(separator: " · "))
+                                .font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
+                                .lineLimit(1).truncationMode(.middle)
+                            Spacer(minLength: 0)
+                        }
+                    }
                 }
             }
         }
