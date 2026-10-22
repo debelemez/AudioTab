@@ -18,7 +18,7 @@ final class BrowserProfiles: @unchecked Sendable {
         /// "paket kimliği|profil klasörü" (ör. "com.google.Chrome|Profile 1"): Ayarlar'daki özel ad bununla saklanır
         var id = ""
         /// Otomatik bulunan ad (özel ad verilmemişse rozette bu yazar)
-        var autoName = 
+        var autoName = ""
         /// Pencereyle eşleştirmek için: e-posta (en ayırt edici), profil adı, hesap adı
         var email = ""
         var localName = ""

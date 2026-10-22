@@ -555,22 +555,34 @@ struct SettingsView: View {
                 Text(L("⌘Tab'daki profil rozetinde yazacak ad. Boş bırakırsan tarayıcıdaki profil adı kullanılır."))
                     .font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
                 ForEach(browsers) { b in
-                    Text(b.app).font(.system(size: 12, weight: .bold)).padding(.top, 4)
-                    ForEach(b.profiles, id: \.id) { p in
-                        HStack(spacing: 10) {
-                            Circle().fill(Color(nsColor: p.color ?? .controlAccentColor)).frame(width: 9, height: 9)
-                            TextField(p.autoName, text: model.bind({ BrowserProfiles.labels[p.id] ?? "" },
-                                                                   { BrowserProfiles.setLabel($0, for: p) }))
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 200)
-                            Text([p.accountNames.first, p.email.isEmpty ? nil : p.email].compactMap { $0 }.joined(separator: " · "))
-                                .font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
-                                .lineLimit(1).truncationMode(.middle)
-                            Spacer(minLength: 0)
-                        }
-                    }
+                    browserSection(b)
                 }
             }
+        }
+    }
+
+    @ViewBuilder private func browserSection(_ b: BrowserProfiles.BrowserEntry) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(b.app).font(.system(size: 12, weight: .bold)).padding(.top, 4)
+            ForEach(b.profiles, id: \.id) { (p: BrowserProfiles.Profile) in
+                profileRow(p)
+            }
+        }
+    }
+
+    private func profileRow(_ p: BrowserProfiles.Profile) -> some View {
+        let label: Binding<String> = model.bind({ BrowserProfiles.labels[p.id] ?? "" },
+                                                { (v: String) in BrowserProfiles.setLabel(v, for: p) })
+        let info = [p.accountNames.first, p.email.isEmpty ? nil : p.email].compactMap { $0 }.joined(separator: " · ")
+        return HStack(spacing: 10) {
+            Circle().fill(Color(nsColor: p.color ?? .controlAccentColor)).frame(width: 9, height: 9)
+            TextField(p.autoName, text: label)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 200)
+            Text(info)
+                .font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
+                .lineLimit(1).truncationMode(.middle)
+            Spacer(minLength: 0)
         }
     }
 
