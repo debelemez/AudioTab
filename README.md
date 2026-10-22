@@ -41,6 +41,23 @@ It does nothing while idle: no timers, no background polling. It only goes onlin
 - **Every window** of your browsers is always listed: Chrome, Safari, Arc, Brave, Edge, Firefox and more. That includes other profiles, other Spaces and full-screen windows.
 - Click an empty spot to close the panel.
 
+### Grouped view (optional)
+
+<img src="docs/images/grouped.jpg" alt="Grouped view" width="900">
+
+- Turn it on in **Settings › Windows › View › Grouped**.
+- Windows sit side by side in sections: **Browsers · Projects · Development · Apps · Folders**, with thin dividers. Folders are always on the far right.
+- **Folders** show the folder name in large type instead of a preview.
+- **Project apps** (DaVinci Resolve, Adobe apps, Final Cut, Logic, Ableton, Blender…) are detected automatically. The project name, read from the window title, appears on a colored band. You can add or remove project apps in Settings.
+- **←→** moves between sections, **↑↓** within a section.
+
+### One app only
+
+<img src="docs/images/app-filter.jpg" alt="Only one app's windows" width="900">
+
+- In **Settings › Windows › Which apps**, pick an app (say, your browser). ⌘Tab or ⌥Tab then switches only between that app's windows, across all profiles.
+- While the panel is open, press **A** to jump to the next app (**⇧A** for the previous one), or click a chip at the top.
+
 ## Sound output: ⌘⇧
 
 <img src="docs/images/audio.jpg" alt="Sound output panel" width="900">

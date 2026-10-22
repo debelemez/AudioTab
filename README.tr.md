@@ -41,6 +41,23 @@ Boştayken hiçbir şey yapmaz: timer yok, arka planda tarama yok, internete sad
 - Chrome, Safari, Arc, Brave, Edge, Firefox gibi tarayıcıların **tüm pencereleri** her zaman listede olur: başka profiller, başka masaüstleri ve tam ekrandakiler dahil.
 - Boşluğa tıklayınca panel kapanır.
 
+### Gruplu görünüm (isteğe bağlı)
+
+<img src="docs/images/tr/grouped.jpg" alt="Gruplu görünüm" width="900">
+
+- **Ayarlar › Pencereler › Görünüm › Gruplu** ile açılır.
+- Pencereler yan yana bölümlerde durur: **Tarayıcılar · Projeler · Geliştirme · Uygulamalar · Klasörler**. Aralarında ince çizgi var, Klasörler hep en sağda.
+- **Klasörlerde** önizleme yerine klasörün adı büyük yazar.
+- **Proje uygulamaları** (DaVinci Resolve, Adobe uygulamaları, Final Cut, Logic, Ableton, Blender…) otomatik algılanır. Pencere başlığından okunan proje adı renkli bir şeritte görünür. Proje uygulamalarını Ayarlar'dan ekleyip çıkarabilirsin.
+- **←→** bölümler arasında, **↑↓** bölüm içinde gezer.
+
+### Sadece bir uygulama
+
+<img src="docs/images/tr/app-filter.jpg" alt="Sadece bir uygulamanın pencereleri" width="900">
+
+- **Ayarlar › Pencereler › Hangi uygulamalar** kısmından bir uygulama seç (örneğin tarayıcın). ⌘Tab ya da ⌥Tab artık sadece o uygulamanın pencereleri arasında, tüm profiller dahil geçer.
+- Panel açıkken **A** ile sonraki uygulamaya (**⇧A** ile öncekine) geçersin ya da üstteki çiplere tıklarsın.
+
 ## Ses çıkışı: ⌘⇧
 
 <img src="docs/images/tr/audio.jpg" alt="Ses çıkışı paneli" width="900">
