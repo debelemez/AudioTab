@@ -557,6 +557,15 @@ struct SettingsView: View {
                 ForEach(browsers) { b in
                     browserSection(b)
                 }
+                HStack {
+                    Spacer()
+                    Button(L("Tanı bilgisini kopyala")) {
+                        let s = BrowserProfiles.shared.diagnostics()
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(s, forType: .string)
+                    }
+                    .help(L("Rozet yanlışsa bunu kopyalayıp gönder: pencerelerin düğme yazılarını içerir (e-posta yok)"))
+                }
             }
         }
     }

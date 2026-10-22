@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.17
+
+- The profile badge also recognizes profiles whose Chrome profile button shows the account name (the badge still shows the profile name)
+- Settings › Browser profiles › Copy diagnostics: to track down a wrong badge
+
 ## 2.3.16
 
 - The profile badge shows the right profile: it reads the profile button in the window's toolbar (bookmarks no longer confuse it)

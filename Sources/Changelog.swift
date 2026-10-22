@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.17", items: [
+            ("Profil rozeti, Chrome'un profil düğmesinde hesap adı yazan profilleri de tanıyor (rozette yine profil adı yazar)",
+             "The profile badge also recognizes profiles whose Chrome profile button shows the account name (the badge still shows the profile name)"),
+            ("Ayarlar › Tarayıcı profilleri › Tanı bilgisini kopyala: rozet yanlışsa sorunu bulmak için",
+             "Settings › Browser profiles › Copy diagnostics: to track down a wrong badge"),
+        ]),
         ChangelogEntry(version: "2.3.16", items: [
             ("Profil rozeti doğru profili gösteriyor: pencerenin araç çubuğundaki profil düğmesinin adına bakılıyor (yer imleri karıştırılmıyor)",
              "The profile badge shows the right profile: it reads the profile button in the window's toolbar (bookmarks no longer confuse it)"),

@@ -114,14 +114,10 @@ final class BrowserProfiles: @unchecked Sendable {
 
     // MARK: Algılama
 
-    private func detect(_ it: Item) -> Profile? {
-        guard let bid = it.app.bundleIdentifier, let w = it.window else { return nil }
-        let profiles = names(bid)
-        guard profiles.count > 1 else { return nil }     // tek profil: rozet gereksiz
+    private struct Btn { let texts: [String]; let x: CGFloat }
 
-        // Araç çubuğundaki düğmeler: adları/açıklamaları ve ekrandaki yatay konumları.
-        // Profil düğmesi araç çubuğunun sağ ucunda durur, adı da tam olarak profil adıdır.
-        struct Btn { let texts: [String]; let x: CGFloat }
+    /// Pencerenin araç çubuğu düğmeleri (web içeriğine inmeden): adlar/açıklamalar/ipuçları + yatay konum
+    private func collectButtons(_ w: AXUIElement) -> [Btn] {
         var buttons: [Btn] = []
         var queueEls: [(AXUIElement, Int)] = [(w, 0)]
         var visited = 0
@@ -144,35 +140,71 @@ final class BrowserProfiles: @unchecked Sendable {
                 }
                 if !texts.isEmpty { buttons.append(Btn(texts: texts, x: x)) }
             }
-            if role == "AXWebArea" || depth >= 8 { continue }   // web içeriğine inme
+            if role == "AXWebArea" || depth >= 8 { continue }
             if let kids: [AXUIElement] = AX.attr(el, kAXChildrenAttribute) {
                 for k in kids { queueEls.append((k, depth + 1)) }
             }
         }
+        return buttons
+    }
 
-        // Bir kurala uyan düğmelerden en sağdakinin profili (yer imleri solda kalır)
-        func pick(_ match: (String, Profile) -> Bool) -> Profile? {
-            var best: (p: Profile, x: CGFloat)?
-            for b in buttons {
-                for p in profiles where b.texts.contains(where: { match($0, p) }) {
-                    if best == nil || b.x > best!.x { best = (p, b.x) }
+    /// Chrome'un profil düğmesi bazen profil adını ("Flow 2"), bazen oturum açılan hesabın adını
+    /// ("Firewall") gösterir. İkisine de bakılır; bir düğme yazısı birden fazla profile uyuyorsa
+    /// o yazı sayılmaz. Uyanlardan en sağdaki düğme seçilir (profil düğmesi sağda, yer imleri solda).
+    private func match(_ buttons: [Btn], _ profiles: [Profile]) -> Profile? {
+        func keys(_ p: Profile) -> [String] {
+            ([p.localName] + p.accountNames).map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty }
+        }
+        func fits(_ t: String, _ k: String) -> Bool {
+            t == k || t.hasPrefix(k + " (") || t.hasPrefix(k + "\n") || t.hasSuffix(": " + k) || t.contains("\n" + k + "\n")
+        }
+        var best: (p: Profile, x: CGFloat)?
+        for b in buttons {
+            for t in b.texts {
+                let hits = profiles.filter { p in keys(p).contains { fits(t, $0) } }
+                guard hits.count == 1 else { continue }
+                if best == nil || b.x > best!.x { best = (hits[0], b.x) }
+            }
+        }
+        if let best { return best.p }
+        // E-posta (sadece tek profile uyuyorsa)
+        let byMail = profiles.filter { p in !p.email.isEmpty && buttons.contains { $0.texts.contains { $0.contains(p.email.lowercased()) } } }
+        return byMail.count == 1 ? byMail[0] : nil
+    }
+
+    private func detect(_ it: Item) -> Profile? {
+        guard let bid = it.app.bundleIdentifier, let w = it.window else { return nil }
+        let profiles = names(bid)
+        guard profiles.count > 1 else { return nil }     // tek profil: rozet gereksiz
+        return match(collectButtons(w), profiles)        // emin değilsek nil: yanlış ad yazmaktansa rozet yok
+    }
+
+    /// Ayarlar'daki "Tanı bilgisini kopyala": açık tarayıcı pencerelerinin düğme yazıları ve sonuç
+    func diagnostics() -> String {
+        var out: [String] = []
+        for app in NSWorkspace.shared.runningApplications where Self.supports(app) {
+            guard let bid = app.bundleIdentifier else { continue }
+            let profiles = names(bid, force: true)
+            out.append("== \(app.localizedName ?? bid) (\(bid))")
+            for p in profiles {
+                out.append("profil: \(p.id) | ad: \(p.localName) | hesap: \(p.accountNames.joined(separator: " / "))")
+            }
+            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+            AXUIElementSetMessagingTimeout(axApp, 0.3)
+            let wins: [AXUIElement] = AX.attr(axApp, kAXWindowsAttribute) ?? []
+            for w in wins {
+                let title: String = AX.attr(w, kAXTitleAttribute) ?? ""
+                let btns = collectButtons(w)
+                let result = match(btns, profiles).map { $0.localName } ?? "—"
+                out.append("-- pencere: \(title.prefix(60)) → \(result)")
+                for b in btns.sorted(by: { $0.x > $1.x }).prefix(12) {
+                    out.append("   x=\(Int(b.x))  \(b.texts.map { String($0.prefix(60)) }.joined(separator: " | "))")
                 }
             }
-            return best?.p
         }
-        let local: (Profile) -> String = { $0.localName.lowercased() }
-        // 1) Düğmenin adı tam olarak profil adı ("Flow 2")
-        if let p = pick({ t, p in !local(p).isEmpty && t == local(p) }) { return p }
-        // 2) "Flow 2 (…)" / "Flow 2\n…" / "…: Flow 2" gibi
-        if let p = pick({ t, p in
-            let k = local(p)
-            return !k.isEmpty && (t.hasPrefix(k + " (") || t.hasPrefix(k + "\n") || t.hasSuffix(": " + k) || t.contains("\n" + k + "\n"))
-        }) { return p }
-        // 3) E-posta (sadece tek profile uyuyorsa)
-        let byMail = profiles.filter { p in !p.email.isEmpty && buttons.contains { $0.texts.contains { $0.contains(p.email.lowercased()) } } }
-        if byMail.count == 1 { return byMail[0] }
-        // Emin değilsek rozet yok (yanlış ad yazmaktansa)
-        return nil
+        // E-postaları gizle
+        let text = out.joined(separator: "\n")
+        return text.replacingOccurrences(of: #"[^\s@|]+@[^\s@|]+"#, with: "<e-posta>", options: .regularExpression)
     }
 
     /// Tarayıcının profil adları (ve varsa tema rengi), Local State'ten
