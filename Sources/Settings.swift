@@ -409,14 +409,21 @@ struct SettingsView: View {
                           p == .cmd ? L("Kapatınca macOS'un kendi ⌘Tab'ı geri gelir") : nil,
                           isOn: model.profileBinding(p, "enabled"))
                 Divider().opacity(0.4)
-                Row(L("Görünüm"), p.list ? L("Alt alta satırlar, ses listesi gibi") : L("Kartlar yan yana")) {
-                    Picker("", selection: model.profileBinding(p, "list")) {
-                        Text(L("Izgara")).tag(false)
-                        Text(L("Liste")).tag(true)
+                Row(L("Görünüm"), p.list ? L("Alt alta satırlar, ses listesi gibi")
+                                    : p.grouped ? L("Klasörler · Tarayıcılar · Projeler · Geliştirme · Uygulamalar bölümleri")
+                                    : L("Kartlar yan yana")) {
+                    Picker("", selection: model.bind({ p.list ? 1 : (p.grouped ? 2 : 0) }, { v in
+                        p.list = v == 1
+                        p.grouped = v == 2
+                        if v == 2 { p.previews = true }   // gruplu görünüm önizlemelerle tasarlandı
+                    })) {
+                        Text(L("Izgara")).tag(0)
+                        Text(L("Liste")).tag(1)
+                        Text(L("Gruplu")).tag(2)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 160)
+                    .frame(width: 230)
                 }
                 .disabled(!p.enabled)
                 ToggleRow(L("Pencere önizlemeleri"), p.list ? L("Liste görünümünde kullanılmaz") : L("Ekran Kaydı izni gerekir (macOS 14+)"),
@@ -437,6 +444,7 @@ struct SettingsView: View {
                 .disabled(!p.enabled)
             }
         }
+        if Profile.allCases.contains(where: { $0.grouped && !$0.list }) { groupedCard }
         Card(title: L("Pencereleri her zaman bul"), icon: "scope") {
             Row(L("Kapsam"), L("Diğer masaüstlerindeki, tam ekrandaki ve arkada kalan pencereleri de kesin gösterir (Chrome profilleri dahil). Arka planda, sadece masaüstü değişince ve uygulama açılınca güncellenir.")) {
                 Picker("", selection: model.bind({ DeepScanScope.current }, { v in
@@ -463,6 +471,57 @@ struct SettingsView: View {
                 shortcut("A / ⇧A", L("Sadece bir uygulamanın pencereleri: sonraki / önceki uygulama"))
             }
         }
+    }
+
+    // MARK: Gruplu görünüm ayarları
+
+    @ViewBuilder private var groupedCard: some View {
+        Card(title: L("Gruplu görünüm"), icon: "square.grid.3x1.below.line.grid.1x2") {
+            ToggleRow(L("Klasör adlarını büyük göster"), L("Finder pencerelerinde önizleme yerine klasörün adı"),
+                      isOn: model.bind({ GroupSettings.bigFolderNames }, { GroupSettings.bigFolderNames = $0 }))
+            ToggleRow(L("Proje adlarını göster"), L("DaVinci, Adobe, Final Cut, Logic, Ableton, Blender… pencere başlığından proje adı okunur ve önizlemenin üstüne yazılır"),
+                      isOn: model.bind({ GroupSettings.showProjectNames }, { GroupSettings.showProjectNames = $0 }))
+            Divider().opacity(0.4)
+            Row(L("Proje uygulamaları"), L("Otomatik algılananlar ve eklediklerin. Bunlar Projeler bölümünde görünür.")) {
+                Menu(L("Ekle")) {
+                    ForEach(runningApps().filter { !GroupSettings.isProjectApp($0.id) }) { a in
+                        Button(a.name) { GroupSettings.addProjectApp(a.id); model.objectWillChange.send() }
+                    }
+                }
+                .frame(width: 110)
+            }
+            let current = projectAppList()
+            if current.isEmpty {
+                Text(L("Şu an açık proje uygulaması yok. DaVinci, Adobe gibi uygulamalar açılınca otomatik algılanır."))
+                    .font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
+            } else {
+                FlowChips(items: current.map { ChipItem(id: $0.id, name: $0.name) }) { bid in
+                    GroupSettings.removeProjectApp(bid); model.objectWillChange.send()
+                }
+            }
+        }
+    }
+
+    /// Açık uygulamalar (paket kimliği + ad), ada göre sıralı
+    private func runningApps() -> [AppChoice] {
+        var seen = Set<String>()
+        return NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != Bundle.main.bundleIdentifier }
+            .compactMap { a in a.bundleIdentifier.map { AppChoice(id: $0, name: a.localizedName ?? $0) } }
+            .filter { seen.insert($0.id).inserted }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Şu an Projeler bölümüne giren uygulamalar: açık olanlar + kullanıcının eklediği (kapalı olsa da)
+    private func projectAppList() -> [AppChoice] {
+        var list = runningApps().filter { GroupSettings.isProjectApp($0.id) }
+        let ids = Set(list.map(\.id))
+        for bid in GroupSettings.addedProjectApps where !ids.contains(bid) {
+            let name = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bid)
+                .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") } ?? bid
+            list.append(AppChoice(id: bid, name: name))
+        }
+        return list
     }
 
     /// Açık uygulamalar (+ kayıtlı seçim kapalı bir uygulamaysa o da), ada göre sıralı
@@ -959,6 +1018,33 @@ struct PermissionRow: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(granted ? Color.green : Color.orange)
                 Button(L("Ayarları aç"), action: open)
+            }
+        }
+    }
+}
+
+
+/// Kaldırılabilir küçük çipler (satıra sığmayan alta geçer)
+struct ChipItem: Identifiable { let id: String; let name: String }
+
+struct FlowChips: View {
+    let items: [ChipItem]
+    let onRemove: (String) -> Void
+
+    var body: some View {
+        let columns = [GridItem(.adaptive(minimum: 150), spacing: 6, alignment: .leading)]
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
+            ForEach(items) { it in
+                HStack(spacing: 6) {
+                    Text(it.name).font(.system(size: 11.5, weight: .semibold)).lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button { onRemove(it.id) } label: {
+                        Image(systemName: "xmark.circle.fill").font(.system(size: 12)).foregroundStyle(.white.opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Capsule().fill(.white.opacity(0.10)))
             }
         }
     }

@@ -93,6 +93,12 @@ enum Profile: String, CaseIterable {
         nonmutating set { write("list", newValue) }
     }
 
+    /// Gruplu görünüm: Klasörler · Tarayıcılar · Projeler · Geliştirme · Uygulamalar bölümleri (isteğe bağlı)
+    var grouped: Bool {
+        get { read("grouped", false) }
+        nonmutating set { write("grouped", newValue) }
+    }
+
     /// Sadece bu uygulamanın pencereleri (paket kimliği). Boş = tüm uygulamalar.
     /// Panel açıkken A (ya da Tab'ın üstündeki tuş) ile değiştirilebilir.
     var appFilter: String {
@@ -105,6 +111,7 @@ enum Profile: String, CaseIterable {
         case "enabled": return enabled
         case "previews": return previews
         case "list": return list
+        case "grouped": return grouped
         default: return showMinimized
         }
     }
@@ -113,6 +120,7 @@ enum Profile: String, CaseIterable {
         case "enabled": enabled.toggle()
         case "previews": previews.toggle()
         case "list": list.toggle()
+        case "grouped": grouped.toggle()
         default: showMinimized.toggle()
         }
     }
@@ -772,10 +780,12 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         items = filtered()
         active = true
         selected = startIndex(reverse: reverse)
+        applyGrouping()
         ui.filterBar = filterBarModel()
         let previews = previewsOn
         ui.previews = previews
         ui.listMode = profile.list
+        ui.groupedMode = profile.grouped && !profile.list
         ui.audioBadge = audioFor
         ui.prepare()
 
@@ -855,9 +865,26 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         profile.appFilter = index <= 0 || index > apps.count ? "" : (apps[index - 1].bundleIdentifier ?? "")
         items = filtered()
         selected = startIndex(reverse: false)
+        applyGrouping()
         ui.filterBar = filterBarModel()
         showWork?.cancel(); showWork = nil
         ui.show(items, selected: selected, thumbs: thumbCache)
+    }
+
+    /// Gruplu görünümde pencereleri bölüm sırasına diz (bölüm içinde en son kullanılan önce).
+    /// Seçim aynı pencerede kalır: ⌘Tab'a hızlı basınca yine bir önceki pencereye geçilir.
+    private func applyGrouping() {
+        guard profile.grouped, !profile.list, items.count > 1 else { return }
+        let keep = items.indices.contains(selected) ? items[selected] : nil
+        items = items.enumerated()
+            .sorted { a, b in
+                let ga = GroupSettings.group(for: a.element.app).rawValue, gb = GroupSettings.group(for: b.element.app).rawValue
+                return ga != gb ? ga < gb : a.offset < b.offset
+            }
+            .map { $0.element }
+        if let keep, let i = items.firstIndex(where: { $0.pid == keep.pid && $0.wid == keep.wid && $0.title == keep.title }) {
+            selected = i
+        }
     }
 
     private func cycleFilter(_ d: Int) {
@@ -983,6 +1010,10 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     var previews = true
     /// Liste görünümü: alt alta satırlar (ses listesi gibi)
     var listMode = false
+    /// Gruplu görünüm: bölüm başlıkları altında kartlar
+    var groupedMode = false
+    private var headerViews: [NSView] = []
+    private let groupHeaderH: CGFloat = 24, groupGap: CGFloat = 14
     /// Uygulamaya atanmış ses cihazı (simge, ad) — kartta rozet olarak gösterilir
     var audioBadge: ((NSRunningApplication) -> (symbol: String, name: String)?)?
     var onCloseItem: ((Int) -> Void)?
@@ -1088,7 +1119,11 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         let mouse = NSEvent.mouseLocation
         screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main
         let h = screen?.visibleFrame.height ?? 900
-        thumbH = (previews && !listMode) ? (h * 0.22).clamped(150, 260).rounded() : 76
+        if groupedMode {
+            thumbH = previews ? (h * 0.15).clamped(110, 190).rounded() : 76
+        } else {
+            thumbH = (previews && !listMode) ? (h * 0.22).clamped(150, 260).rounded() : 76
+        }
     }
 
     private func cellWidth(_ item: Item) -> CGFloat {
@@ -1103,11 +1138,15 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         lastThumbs = thumbs
         cells.forEach { $0.removeFromSuperview() }
         cells.removeAll(keepingCapacity: true)
+        headerViews.forEach { $0.removeFromSuperview() }
+        headerViews.removeAll()
         guard let screen else { return }
 
         ItemCell.armedAt = NSEvent.mouseLocation
         if listMode {
             layoutList(items, selected: selected, screen: screen)
+        } else if groupedMode {
+            layoutGrouped(items, thumbs: thumbs, screen: screen)
         } else {
             layoutGrid(items, thumbs: thumbs, screen: screen)
         }
@@ -1175,6 +1214,98 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
                 cx += widths[i] + gap
             }
         }
+    }
+
+    /// Bölümlü ızgara: her bölümün başlığı, altında satırlar (sola hizalı).
+    private func layoutGrouped(_ items: [Item], thumbs: [CGWindowID: CGImage], screen: NSScreen) {
+        let vf = screen.visibleFrame
+        let scale = screen.backingScaleFactor
+        let maxRowW = (vf.width * 0.92 - pad * 2).rounded(.down)
+        let maxH = vf.height * 0.9 - pad * 2 - headerH
+
+        // Bölümler (items zaten bölüm sırasına dizili)
+        var sections: [(group: WindowGroup, idx: [Int])] = []
+        for i in items.indices {
+            let g = GroupSettings.group(for: items[i].app)
+            if sections.last?.group == g { sections[sections.count - 1].idx.append(i) } else { sections.append((g, [i])) }
+        }
+
+        var widths: [Int: CGFloat] = [:]
+        var laid: [(group: WindowGroup, count: Int, rows: [[Int]])] = []
+        var usedH: CGFloat = 0
+        outer: for s in sections {
+            let need = (laid.isEmpty ? 0 : groupGap) + groupHeaderH + cellH
+            if usedH + need > maxH { break }
+            usedH += (laid.isEmpty ? 0 : groupGap) + groupHeaderH
+            var rows: [[Int]] = [[]]
+            var rowW: CGFloat = 0
+            for i in s.idx {
+                let w = min(cellWidth(items[i]), maxRowW)
+                widths[i] = w
+                if !rows[rows.count - 1].isEmpty && rowW + gap + w > maxRowW {
+                    if usedH + gap + cellH > maxH { break }
+                    rows.append([]); rowW = 0
+                    usedH += gap
+                }
+                if rows[rows.count - 1].isEmpty { usedH += cellH }
+                rowW += (rows[rows.count - 1].isEmpty ? 0 : gap) + w
+                rows[rows.count - 1].append(i)
+            }
+            laid.append((s.group, s.idx.count, rows))
+            if usedH >= maxH { break outer }
+        }
+        rows = laid.flatMap { $0.rows }
+        visibleRange = 0..<items.count
+        func width(of row: [Int]) -> CGFloat { row.reduce(0) { $0 + (widths[$1] ?? 0) } + CGFloat(max(0, row.count - 1)) * gap }
+
+        let contentW = max(rows.map(width).max() ?? 0, 260)
+        let w = max(contentW + pad * 2, minWidthForBar).rounded()
+        let h = (usedH + pad * 2 + headerH).rounded()
+        place(w, h, in: screen)
+        placeBar(w: w, h: h)
+
+        let mode: CellMode = previews ? .preview : .icon
+        var y = h - pad - headerH
+        for (k, s) in laid.enumerated() {
+            if k > 0 { y -= groupGap }
+            y -= groupHeaderH
+            let hv = Self.groupHeader(s.group, count: s.count)
+            hv.frame = NSRect(x: pad + 2, y: y + 2, width: w - pad * 2, height: groupHeaderH - 4)
+            glass.addSubview(hv)
+            headerViews.append(hv)
+            for (r, row) in s.rows.enumerated() {
+                if r > 0 { y -= gap }
+                y -= cellH
+                var cx = pad
+                for i in row {
+                    let deco = GroupSettings.decoration(for: items[i])
+                    let cell = ItemCell(frame: NSRect(x: cx, y: y, width: widths[i] ?? 156, height: cellH),
+                                        item: items[i], index: i, mode: mode,
+                                        thumb: thumbs[items[i].wid], scale: scale,
+                                        titleH: titleH, inset: inset,
+                                        audio: audioBadge?(items[i].app),
+                                        folderName: deco.folder, project: deco.project)
+                    add(cell)
+                    cx += (widths[i] ?? 156) + gap
+                }
+            }
+        }
+    }
+
+    /// Bölüm başlığı: simge + BÜYÜK HARF ad + sayı
+    private static func groupHeader(_ g: WindowGroup, count: Int) -> NSView {
+        let v = NSView()
+        let img = NSImageView(frame: NSRect(x: 0, y: 2, width: 15, height: 15))
+        img.image = NSImage(systemSymbolName: g.symbol, accessibilityDescription: g.title)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold))
+        img.contentTintColor = NSColor.white.withAlphaComponent(0.6)
+        v.addSubview(img)
+        let t = NSTextField(labelWithString: "\(g.title.uppercased(with: AppLanguage.active == .tr ? Locale(identifier: "tr_TR") : Locale(identifier: "en_US")))  \(count)")
+        t.font = .systemFont(ofSize: 11.5, weight: .bold)
+        t.textColor = NSColor.white.withAlphaComponent(0.6)
+        t.frame = NSRect(x: 21, y: 1, width: 400, height: 16)
+        v.addSubview(t)
+        return v
     }
 
     private func layoutList(_ items: [Item], selected: Int, screen: NSScreen) {
@@ -1251,6 +1382,8 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     func hide() {
         panel.orderOut(nil)
         barView.removeFromSuperview()
+        headerViews.forEach { $0.removeFromSuperview() }
+        headerViews.removeAll()
         cells.forEach { $0.removeFromSuperview() }
         cells.removeAll()
         rows.removeAll()
@@ -1357,7 +1490,8 @@ final class ItemCell: NSView {
     static var dotsWidth: CGFloat { dotSize * 2 + dotGap }
 
     init(frame: NSRect, item: Item, index: Int, mode: CellMode, thumb: CGImage?, scale: CGFloat,
-         titleH: CGFloat, inset: CGFloat, audio: (symbol: String, name: String)?) {
+         titleH: CGFloat, inset: CGFloat, audio: (symbol: String, name: String)?,
+         folderName: String? = nil, project: String? = nil) {
         self.index = index
         self.wid = item.wid
         self.dimmed = item.minimized || item.app.isHidden || (item.window == nil && !item.system)
@@ -1405,10 +1539,17 @@ final class ItemCell: NSView {
             title.frame = NSRect(x: tx, y: top + (titleH - 18) / 2, width: max(10, right - tx), height: 18)
             addSubview(title)
 
-            let tv = ThumbView(frame: NSRect(x: inset, y: inset, width: frame.width - inset * 2, height: top - inset), scale: scale)
-            addSubview(tv)
-            thumbView = tv
-            if let thumb { tv.set(thumb, dimmed: dimmed) } else { tv.placeholder(item.app.icon, dimmed: dimmed) }
+            let area = NSRect(x: inset, y: inset, width: frame.width - inset * 2, height: top - inset)
+            if let folderName {
+                // Klasör: önizleme yerine klasör simgesi + büyük ad
+                addSubview(Self.folderCard(folderName, frame: area))
+            } else {
+                let tv = ThumbView(frame: area, scale: scale)
+                addSubview(tv)
+                thumbView = tv
+                if let thumb { tv.set(thumb, dimmed: dimmed) } else { tv.placeholder(item.app.icon, dimmed: dimmed) }
+                if let project { addSubview(Self.projectTag(project, in: area)) }
+            }
 
         case .icon:
             // Önizlemesiz: büyük ikon + başlık
@@ -1419,11 +1560,12 @@ final class ItemCell: NSView {
             if dimmed { icon.alphaValue = 0.7 }
             addSubview(icon)
 
-            let title = label(item.title, size: 14, weight: .semibold, alpha: 1, align: .center)
-            title.frame = NSRect(x: 8, y: 30, width: frame.width - 16, height: 18)
+            let main = project ?? folderName ?? item.title
+            let title = label(main, size: project != nil || folderName != nil ? 15 : 14, weight: project != nil || folderName != nil ? .bold : .semibold, alpha: 1, align: .center)
+            title.frame = NSRect(x: 8, y: 30, width: frame.width - 16, height: 19)
             addSubview(title)
 
-            let detail = state.isEmpty ? (item.title == appName ? "" : appName) : state
+            let detail = state.isEmpty ? (main == appName ? "" : appName) : state
             let sub = label(detail, size: 11.5, weight: .regular, alpha: 0.7, align: .center)
             sub.frame = NSRect(x: 8, y: 12, width: frame.width - 16, height: 15)
             addSubview(sub)
@@ -1472,6 +1614,55 @@ final class ItemCell: NSView {
         updateLook()
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    /// Klasör kartı: önizleme alanında klasör simgesi ve büyük klasör adı
+    static func folderCard(_ name: String, frame: NSRect) -> NSView {
+        let v = NSView(frame: frame)
+        v.wantsLayer = true
+        v.layer?.cornerRadius = 10
+        v.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.07).cgColor
+        let iconS = min(64, frame.height * 0.42)
+        let icon = NSImageView(frame: NSRect(x: (frame.width - iconS) / 2, y: frame.height * 0.52, width: iconS, height: iconS))
+        icon.image = NSImage(named: NSImage.folderName)
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        v.addSubview(icon)
+        let t = NSTextField(labelWithString: name)
+        t.font = .systemFont(ofSize: min(30, max(18, frame.height * 0.16)), weight: .bold)
+        t.textColor = .white
+        t.alignment = .center
+        t.lineBreakMode = .byTruncatingMiddle
+        t.maximumNumberOfLines = 2
+        t.frame = NSRect(x: 10, y: frame.height * 0.10, width: frame.width - 20, height: frame.height * 0.38)
+        v.addSubview(t)
+        return v
+    }
+
+    /// Proje adı etiketi: önizlemenin alt kısmında koyu cam kapsül
+    static func projectTag(_ name: String, in area: NSRect) -> NSView {
+        let f = NSFont.systemFont(ofSize: 15, weight: .bold)
+        let tw = min(area.width - 40, ceil((name as NSString).size(withAttributes: [.font: f]).width))
+        let h: CGFloat = 30
+        let v = NSView(frame: NSRect(x: area.minX + 8, y: area.minY + 8, width: tw + 22 + 18, height: h))
+        v.wantsLayer = true
+        v.layer?.cornerRadius = h / 2
+        v.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.62).cgColor
+        v.layer?.borderWidth = 0.5
+        v.layer?.borderColor = NSColor.white.withAlphaComponent(0.3).cgColor
+        let img = NSImageView(frame: NSRect(x: 10, y: 8, width: 14, height: 14))
+        img.image = NSImage(systemSymbolName: "film", accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 11, weight: .bold))
+        img.contentTintColor = .white
+        v.addSubview(img)
+        let t = NSTextField(labelWithString: name)
+        t.font = f
+        t.textColor = .white
+        t.lineBreakMode = .byTruncatingTail
+        t.maximumNumberOfLines = 1
+        t.frame = NSRect(x: 30, y: 6, width: tw, height: 19)
+        v.addSubview(t)
+        v.toolTip = name
+        return v
+    }
 
     /// Sağ üst: kırmızı kapat noktası + sağında bölme düğmesi
     private func addDots(x: CGFloat, y: CGFloat) {

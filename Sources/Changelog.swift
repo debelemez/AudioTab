@@ -16,6 +16,16 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.5", items: [
+            ("İsteğe bağlı gruplu ⌘Tab görünümü: Klasörler · Tarayıcılar · Projeler · Geliştirme · Uygulamalar",
+             "Optional grouped ⌘Tab view: Folders · Browsers · Projects · Development · Apps"),
+            ("Klasör kartlarında önizleme yerine klasörün adı büyük yazılır",
+             "Folder cards show the folder name in large type instead of a preview"),
+            ("DaVinci, Adobe, Final Cut, Logic, Ableton, Blender… otomatik algılanır, proje adı önizlemenin üstünde",
+             "DaVinci, Adobe, Final Cut, Logic, Ableton, Blender… are detected and the project name is shown on the preview"),
+            ("Proje uygulamaları listesini Ayarlar › Pencereler'den düzenleyebilirsin",
+             "Edit the list of project apps in Settings › Windows"),
+        ]),
         ChangelogEntry(version: "2.3.4", items: [
             ("Açık olmayan (gizli) pencereler artık listeye gelmiyor",
              "Hidden helper windows no longer show up in the list"),

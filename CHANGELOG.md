@@ -3,6 +3,13 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.5
+
+- Optional grouped ⌘Tab view: Folders · Browsers · Projects · Development · Apps
+- Folder cards show the folder name in large type instead of a preview
+- DaVinci, Adobe, Final Cut, Logic, Ableton, Blender… are detected and the project name is shown on the preview
+- Edit the list of project apps in Settings › Windows
+
 ## 2.3.4
 
 - Hidden helper windows no longer show up in the list
