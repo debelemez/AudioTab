@@ -297,9 +297,9 @@ private let englishStrings: [String: String] = [
     "Şu an açık proje uygulaması yok. DaVinci, Adobe gibi uygulamalar açılınca otomatik algılanır.": "No project apps are open right now. Apps like DaVinci and Adobe are detected automatically when they open.",
     // Kenar çubuğu + Dock
     "Kenar çubuğu": "Sidebar",
-    "Sık kullanılan klasörlerim": "My favorite folders",
-    "⌘Tab panelinin en sağında, aşağıda eklediğin klasörler": "On the far right of the ⌘Tab panel: the folders you add below",
-    "Finder favorileri": "Finder favorites",
+    "Kenar çubuğu: sık kullanılan klasörlerim": "Sidebar: my favorite folders",
+    "Panelin en sağında, aşağıda eklediğin klasörler": "On the far right of the panel: the folders you add below",
+    "Kenar çubuğu: Finder favorileri": "Sidebar: Finder favorites",
     "Finder'ın kenar çubuğundaki Favoriler, Finder'daki gibi listelenir": "The Favorites from Finder's sidebar, listed just like in Finder",
     "Tıklayınca Finder'da açılır": "Click to open in Finder",
     "Klasör ekle…": "Add folder…",

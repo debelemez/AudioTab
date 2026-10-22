@@ -444,29 +444,12 @@ struct SettingsView: View {
                     .frame(width: 200)
                 }
                 .disabled(!p.enabled)
+                Divider().opacity(0.4)
+                sidebarRows(p)
+                    .disabled(!p.enabled)
             }
         }
         if Profile.allCases.contains(where: { $0.grouped && !$0.list }) { groupedCard }
-        Card(title: L("Kenar çubuğu"), icon: "sidebar.right") {
-            ToggleRow(L("Sık kullanılan klasörlerim"), L("⌘Tab panelinin en sağında, aşağıda eklediğin klasörler"),
-                      isOn: model.bind({ Favorites.showOwn }, { Favorites.showOwn = $0 }))
-            ToggleRow(L("Finder favorileri"), L("Finder'ın kenar çubuğundaki Favoriler, Finder'daki gibi listelenir"),
-                      isOn: model.bind({ Favorites.showFinder }, { Favorites.showFinder = $0 }))
-            if Favorites.showOwn {
-                Divider().opacity(0.4)
-                Row(L("Klasörler"), L("Tıklayınca Finder'da açılır")) {
-                    Button(L("Klasör ekle…")) { addFavoriteFolders() }
-                }
-                let paths = Favorites.folders
-                if paths.isEmpty {
-                    Text(L("Henüz klasör eklemedin.")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
-                } else {
-                    FlowChips(items: paths.map { ChipItem(id: $0, name: FileManager.default.displayName(atPath: $0)) }) { p in
-                        Favorites.remove(p); model.refresh()
-                    }
-                }
-            }
-        }
         Card(title: L("Dock'a sürükle-bırak"), icon: "dock.arrow.up.rectangle") {
             ToggleRow(L("Üstüne gelince uygulamayı hemen aç"),
                       L("Bir dosyayı sürüklerken Dock'taki uygulamanın üstüne gelince beklemeden öne gelir (kapalıysa açılır); dosyayı doğrudan penceresine bırakırsın"),
@@ -504,7 +487,28 @@ struct SettingsView: View {
         }
     }
 
-    private func addFavoriteFolders() {
+    /// Kenar çubuğu: bu kısayola özel (⌘Tab ve ⌥Tab ayrı ayrı)
+    @ViewBuilder private func sidebarRows(_ p: Profile) -> some View {
+        ToggleRow(L("Kenar çubuğu: sık kullanılan klasörlerim"), L("Panelin en sağında, aşağıda eklediğin klasörler"),
+                  isOn: model.bind({ Favorites.showOwn(p) }, { Favorites.setShowOwn($0, p) }))
+        ToggleRow(L("Kenar çubuğu: Finder favorileri"), L("Finder'ın kenar çubuğundaki Favoriler, Finder'daki gibi listelenir"),
+                  isOn: model.bind({ Favorites.showFinder(p) }, { Favorites.setShowFinder($0, p) }))
+        if Favorites.showOwn(p) {
+            Row(L("Klasörler"), L("Tıklayınca Finder'da açılır")) {
+                Button(L("Klasör ekle…")) { addFavoriteFolders(p) }
+            }
+            let paths = Favorites.folders(p)
+            if paths.isEmpty {
+                Text(L("Henüz klasör eklemedin.")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.55))
+            } else {
+                FlowChips(items: paths.map { ChipItem(id: $0, name: FileManager.default.displayName(atPath: $0)) }) { path in
+                    Favorites.remove(path, from: p); model.refresh()
+                }
+            }
+        }
+    }
+
+    private func addFavoriteFolders(_ profile: Profile) {
         let p = NSOpenPanel()
         p.canChooseDirectories = true
         p.canChooseFiles = false
@@ -512,7 +516,7 @@ struct SettingsView: View {
         p.prompt = L("Ekle")
         NSApp.activate(ignoringOtherApps: true)
         if p.runModal() == .OK {
-            Favorites.add(p.urls)
+            Favorites.add(p.urls, to: profile)
             model.refresh()
         }
     }

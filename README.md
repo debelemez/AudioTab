@@ -61,7 +61,7 @@ It does nothing while idle: no timers, no background polling. It only goes onlin
 
 ### Sidebar and Dock drag
 
-- **Sidebar (optional):** turn on **My favorite folders** and/or **Finder favorites** in Settings › Windows. They appear on the far right of the ⌘Tab panel, like Finder's sidebar. Click one to open it in Finder.
+- **Sidebar (optional):** turn on **My favorite folders** and/or **Finder favorites** in Settings › Windows, separately for ⌘Tab and ⌥Tab (each has its own folder list). They appear on the far right of the panel, like Finder's sidebar. Click one to open it in Finder.
 - **Drag to the Dock:** while dragging a file, hover over an app in the Dock and it comes forward right away (it opens if it isn't running), so you can drop straight into its window. You can turn this off in Settings › Windows.
 
 ## Sound output: ⌘⇧

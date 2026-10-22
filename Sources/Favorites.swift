@@ -8,30 +8,36 @@ import Cocoa
 enum Favorites {
     private static let d = UserDefaults.standard
 
+    // ⌘Tab ve ⌥Tab için ayrı ayrı: "cmd.favorites.own", "opt.favorites.folders"…
+    // İlk açılışta 2.3.9'daki ortak ayar (varsa) iki kısayola da başlangıç değeri olur.
+    private static func key(_ p: Profile, _ k: String) -> String { "\(p.rawValue).favorites.\(k)" }
+
     /// Kendi sık kullanılan klasörlerimiz (Ayarlar'dan eklenir)
-    static var showOwn: Bool {
-        get { d.object(forKey: "favorites.own") as? Bool ?? false }
-        set { d.set(newValue, forKey: "favorites.own") }
+    static func showOwn(_ p: Profile) -> Bool {
+        d.object(forKey: key(p, "own")) as? Bool ?? d.object(forKey: "favorites.own") as? Bool ?? false
     }
+    static func setShowOwn(_ v: Bool, _ p: Profile) { d.set(v, forKey: key(p, "own")) }
+
     /// Finder kenar çubuğundaki Favoriler
-    static var showFinder: Bool {
-        get { d.object(forKey: "favorites.finder") as? Bool ?? false }
-        set { d.set(newValue, forKey: "favorites.finder") }
+    static func showFinder(_ p: Profile) -> Bool {
+        d.object(forKey: key(p, "finder")) as? Bool ?? d.object(forKey: "favorites.finder") as? Bool ?? false
     }
-    static var enabled: Bool { showOwn || showFinder }
+    static func setShowFinder(_ v: Bool, _ p: Profile) { d.set(v, forKey: key(p, "finder")) }
+
+    static func enabled(_ p: Profile) -> Bool { showOwn(p) || showFinder(p) }
 
     /// Sık kullanılan klasörlerin yolları (sırasıyla)
-    static var folders: [String] {
-        get { d.stringArray(forKey: "favorites.folders") ?? [] }
-        set { d.set(newValue, forKey: "favorites.folders") }
+    static func folders(_ p: Profile) -> [String] {
+        d.stringArray(forKey: key(p, "folders")) ?? d.stringArray(forKey: "favorites.folders") ?? []
     }
+    static func setFolders(_ v: [String], _ p: Profile) { d.set(v, forKey: key(p, "folders")) }
 
-    static func add(_ urls: [URL]) {
-        var list = folders
+    static func add(_ urls: [URL], to p: Profile) {
+        var list = folders(p)
         for u in urls where !list.contains(u.path) { list.append(u.path) }
-        folders = list
+        setFolders(list, p)
     }
-    static func remove(_ path: String) { folders.removeAll { $0 == path } }
+    static func remove(_ path: String, from p: Profile) { setFolders(folders(p).filter { $0 != path }, p) }
 
     struct Entry {
         let name: String
@@ -39,10 +45,10 @@ enum Favorites {
     }
 
     /// Kenar çubuğu bölümleri (boş bölümler gösterilmez)
-    static func sections() -> [(title: String, items: [Entry])] {
+    static func sections(_ p: Profile) -> [(title: String, items: [Entry])] {
         var out: [(String, [Entry])] = []
-        if showOwn {
-            let own = folders.compactMap { p -> Entry? in
+        if showOwn(p) {
+            let own = folders(p).compactMap { p -> Entry? in
                 var isDir: ObjCBool = false
                 guard FileManager.default.fileExists(atPath: p, isDirectory: &isDir), isDir.boolValue else { return nil }
                 let u = URL(fileURLWithPath: p)
@@ -50,7 +56,7 @@ enum Favorites {
             }
             if !own.isEmpty { out.append((L("Sık kullanılanlar"), own)) }
         }
-        if showFinder {
+        if showFinder(p) {
             let fav = finderFavorites()
             if !fav.isEmpty { out.append((L("Favoriler"), fav)) }
         }
@@ -61,11 +67,15 @@ enum Favorites {
 
     private static var cache: (date: Date, items: [Entry])?
 
-    /// Finder kenar çubuğundaki Favoriler: Finder'ın kendi liste dosyasından okunur;
-    /// okunamazsa varsayılan klasörler (Uygulamalar, Masaüstü, Belgeler, İndirilenler, Ana klasör).
+    /// Finder kenar çubuğundaki Favoriler, Finder'daki sırayla. Önce sistemin canlı listesi,
+    /// olmazsa Finder'ın liste dosyası, o da olmazsa varsayılan klasörler.
     static func finderFavorites() -> [Entry] {
-        if let c = cache, Date().timeIntervalSince(c.date) < 30 { return c.items }
-        var items = fromSFL()
+        if let c = cache, Date().timeIntervalSince(c.date) < 10 { return c.items }
+        // 1) Finder'ın kullandığı sistem listesi (canlı, Finder'daki sırayla)
+        var items = fromSharedFileList()
+        // 2) Olmazsa Finder'ın liste dosyası
+        if items.isEmpty { items = fromSFL() }
+        // 3) O da olmazsa varsayılan klasörler
         if items.isEmpty { items = defaults() }
         cache = (Date(), items)
         return items
@@ -86,7 +96,6 @@ enum Favorites {
             guard let arr = root?["items"] as? [NSDictionary] else { continue }
             var out: [Entry] = []
             for it in arr {
-                if let vis = it["visibility"] as? Int, vis != 0 { continue }     // gizlenmiş öğe
                 guard let bm = it["Bookmark"] as? Data else { continue }
                 var stale = false
                 guard let url = try? URL(resolvingBookmarkData: bm, options: [.withoutUI, .withoutMounting],
@@ -99,6 +108,43 @@ enum Favorites {
             if !out.isEmpty { return out }
         }
         return []
+    }
+
+    /// Finder kenar çubuğu Favorileri, sistemin paylaşılan liste servisi üzerinden.
+    /// Bu arayüz eski (derleme uyarısı vermesin diye çalışma anında bulunur) ama Finder hâlâ bunu kullanıyor.
+    private static func fromSharedFileList() -> [Entry] {
+        typealias CreateFn = @convention(c) (CFAllocator?, CFString, CFTypeRef?) -> Unmanaged<AnyObject>?
+        typealias SnapshotFn = @convention(c) (AnyObject, UnsafeMutablePointer<UInt32>?) -> Unmanaged<CFArray>?
+        typealias ResolveFn = @convention(c) (AnyObject, UInt32, UnsafeMutablePointer<Unmanaged<CFError>?>?) -> Unmanaged<CFURL>?
+        typealias NameFn = @convention(c) (AnyObject) -> Unmanaged<CFString>?
+
+        guard let h = dlopen("/System/Library/Frameworks/CoreServices.framework/CoreServices", RTLD_LAZY),
+              let pCreate = dlsym(h, "LSSharedFileListCreate"),
+              let pSnap = dlsym(h, "LSSharedFileListCopySnapshot"),
+              let pResolve = dlsym(h, "LSSharedFileListItemCopyResolvedURL"),
+              let pName = dlsym(h, "LSSharedFileListItemCopyDisplayName"),
+              let pKind = dlsym(h, "kLSSharedFileListFavoriteItems") else { return [] }
+        let create = unsafeBitCast(pCreate, to: CreateFn.self)
+        let snapshot = unsafeBitCast(pSnap, to: SnapshotFn.self)
+        let resolve = unsafeBitCast(pResolve, to: ResolveFn.self)
+        let displayName = unsafeBitCast(pName, to: NameFn.self)
+        let kind = pKind.assumingMemoryBound(to: CFString.self).pointee
+
+        guard let list = create(nil, kind, nil)?.takeRetainedValue() else { return [] }
+        var seed: UInt32 = 0
+        guard let snap = snapshot(list, &seed)?.takeRetainedValue() as? [AnyObject] else { return [] }
+        let flags: UInt32 = 1 | 2    // kullanıcıya sorma | disk bağlama
+        var out: [Entry] = []
+        for item in snap {
+            guard let cf = resolve(item, flags, nil)?.takeRetainedValue() else { continue }
+            let url = cf as URL
+            guard url.isFileURL else { continue }        // AirDrop, Son Kullanılanlar gibi özel öğeler hariç
+            var isDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else { continue }
+            let name = (displayName(item)?.takeRetainedValue() as String?) ?? FileManager.default.displayName(atPath: url.path)
+            out.append(Entry(name: name, url: url))
+        }
+        return out
     }
 
     private static func defaults() -> [Entry] {

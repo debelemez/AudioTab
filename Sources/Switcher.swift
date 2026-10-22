@@ -789,7 +789,7 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
         selected = startIndex(reverse: reverse)
         applyGrouping()
         ui.filterBar = filterBarModel()
-        ui.favorites = Favorites.enabled ? Favorites.sections() : []
+        ui.favorites = Favorites.enabled(profile) ? Favorites.sections(profile) : []
         let previews = previewsOn
         ui.previews = previews
         ui.listMode = profile.list

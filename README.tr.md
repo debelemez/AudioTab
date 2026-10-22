@@ -61,7 +61,7 @@ Boştayken hiçbir şey yapmaz: timer yok, arka planda tarama yok, internete sad
 
 ### Kenar çubuğu ve Dock'a sürükleme
 
-- **Kenar çubuğu (isteğe bağlı):** Ayarlar › Pencereler'den **Sık kullanılan klasörlerim** ve/veya **Finder favorileri** açılır. ⌘Tab panelinin en sağında, Finder'ın kenar çubuğu gibi görünür. Tıklayınca Finder'da açılır.
+- **Kenar çubuğu (isteğe bağlı):** Ayarlar › Pencereler'den **Sık kullanılan klasörlerim** ve/veya **Finder favorileri** açılır; ⌘Tab ve ⌥Tab için ayrı ayrı, her birinin kendi klasör listesi var. Panelin en sağında, Finder'ın kenar çubuğu gibi görünür. Tıklayınca Finder'da açılır.
 - **Dock'a sürükleme:** Bir dosyayı sürüklerken Dock'taki uygulamanın üstüne gelince uygulama beklemeden öne gelir (kapalıysa açılır); dosyayı doğrudan penceresine bırakırsın. Ayarlar › Pencereler'den kapatılabilir.
 
 ## Ses çıkışı: ⌘⇧

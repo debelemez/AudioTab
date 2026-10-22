@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.10
+
+- Finder favorites now come straight from Finder's sidebar Favorites, in the same order
+- The sidebar is set separately for ⌘Tab and ⌥Tab: each has its own toggles and folder list
+
 ## 2.3.9
 
 - Optional ⌘Tab sidebar: your favorite folders and Finder Favorites on the far right, just like in Finder

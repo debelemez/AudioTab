@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.10", items: [
+            ("Finder favorileri artık doğrudan Finder'ın kenar çubuğundaki Favoriler listesinden, aynı sırayla geliyor",
+             "Finder favorites now come straight from Finder's sidebar Favorites, in the same order"),
+            ("Kenar çubuğu ⌘Tab ve ⌥Tab için ayrı ayrı: her birinde açma/kapama ve kendi klasör listesi",
+             "The sidebar is set separately for ⌘Tab and ⌥Tab: each has its own toggles and folder list"),
+        ]),
         ChangelogEntry(version: "2.3.9", items: [
             ("⌘Tab'da isteğe bağlı kenar çubuğu: sık kullanılan klasörlerin ve Finder favorileri en sağda, Finder'daki gibi",
              "Optional ⌘Tab sidebar: your favorite folders and Finder Favorites on the far right, just like in Finder"),
