@@ -1225,9 +1225,10 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     }
 
     /// Bölümlü görünüm: bölümler yan yana sütunlar (Tarayıcılar … Klasörler en sağda), aralarında ince çizgi.
-    /// Her bölümde kartlar alt alta; ekran yüksekliğine sığmazsa bölüm içinde yeni bir alt sütun açılır.
+    /// Her bölümde kartlar alt alta, sütun başına en fazla 2; fazlası bölüm içinde yan sütuna geçer.
     /// Toplam genişlik ekrana sığmazsa önizlemeler küçültülür.
     private var columns: [[Int]] = []
+    static let cardsPerColumn = 2
     private func layoutGrouped(_ items: [Item], thumbs: [CGWindowID: CGImage], screen: NSScreen) {
         let vf = screen.visibleFrame
         let scale = screen.backingScaleFactor
@@ -1256,7 +1257,10 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
                     let w = min(cellWidth(items[i]), maxW)
                     widths[i] = w
                     var c = cols[cols.count - 1]
-                    if !c.idx.isEmpty && c.h + gap + cellH > maxColH { cols.append(([], 0, 0)); c = cols[cols.count - 1] }
+                    // Bir sütunda en fazla 2 kart (panel aşağı uzamasın); fazlası yan sütuna
+                    if !c.idx.isEmpty && (c.idx.count >= Self.cardsPerColumn || c.h + gap + cellH > maxColH) {
+                        cols.append(([], 0, 0)); c = cols[cols.count - 1]
+                    }
                     c.h += (c.idx.isEmpty ? 0 : gap) + cellH
                     c.w = max(c.w, w)
                     c.idx.append(i)

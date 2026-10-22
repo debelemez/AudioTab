@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.7", items: [
+            ("Gruplu görünümde her sütunda en fazla 2 kart; fazlası yana geçer, panel aşağı uzamaz",
+             "Grouped view: at most 2 cards per column; extra windows go to a new column so the panel stays short"),
+        ]),
         ChangelogEntry(version: "2.3.6", items: [
             ("Proje adı artık büyük ve net: önizlemenin altında uygulamaya özgü renkte şerit",
              "Project names are now large and clear: a band in the app's own color under the preview"),

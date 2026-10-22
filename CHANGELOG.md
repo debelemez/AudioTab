@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.7
+
+- Grouped view: at most 2 cards per column; extra windows go to a new column so the panel stays short
+
 ## 2.3.6
 
 - Project names are now large and clear: a band in the app's own color under the preview
