@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.18", items: [
+            ("KeePassXC gibi bir uygulama klavyeyi kilitlediğinde (güvenli giriş) ⌘Tab artık ölmüyor: o sırada macOS'un kendi ⌘Tab'ı devreye giriyor",
+             "When an app like KeePassXC locks the keyboard (secure input), ⌘Tab no longer dies: macOS's own ⌘Tab takes over meanwhile"),
+            ("AudioTab çöker ya da zorla kapanırsa bir sonraki açılışta macOS kısayolları geri açılıyor; izin sonradan verilirse kısayollar kendiliğinden başlıyor",
+             "If AudioTab crashes or is force-quit, macOS shortcuts are restored on the next launch; shortcuts start on their own when permission is granted later"),
+        ]),
         ChangelogEntry(version: "2.3.17", items: [
             ("Profil rozeti, Chrome'un profil düğmesinde hesap adı yazan profilleri de tanıyor (rozette yine profil adı yazar)",
              "The profile badge also recognizes profiles whose Chrome profile button shows the account name (the badge still shows the profile name)"),

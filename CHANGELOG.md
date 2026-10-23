@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.18
+
+- When an app like KeePassXC locks the keyboard (secure input), ⌘Tab no longer dies: macOS's own ⌘Tab takes over meanwhile
+- If AudioTab crashes or is force-quit, macOS shortcuts are restored on the next launch; shortcuts start on their own when permission is granted later
+
 ## 2.3.17
 
 - The profile badge also recognizes profiles whose Chrome profile button shows the account name (the badge still shows the profile name)

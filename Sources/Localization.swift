@@ -333,6 +333,8 @@ private let englishStrings: [String: String] = [
     "⌘Tab'daki profil rozetinde yazacak ad. Boş bırakırsan tarayıcıdaki profil adı kullanılır.": "The name shown on the profile badge in ⌘Tab. Leave it empty to use the browser's profile name.",
     "Tanı bilgisini kopyala": "Copy diagnostics",
     "Rozet yanlışsa bunu kopyalayıp gönder: pencerelerin düğme yazılarını içerir (e-posta yok)": "If the badge is wrong, copy this and send it: it contains the windows' button labels (no emails)",
+    "%@ klavyeyi kilitledi · ⌘Tab şimdilik macOS'unki": "%@ locked the keyboard · ⌘Tab uses macOS's for now",
+    "Güvenli giriş açık · ⌘Tab şimdilik macOS'unki": "Secure input is on · ⌘Tab uses macOS's for now",
     // Fare
     "Fare": "Mouse",
     "Finder'da yan tuşlarla geri / ileri": "Back / forward in Finder with the side buttons",

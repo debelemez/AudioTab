@@ -41,7 +41,7 @@ compile() {   # $1 = mimari
     -framework ApplicationServices -framework ServiceManagement \
     -framework CoreAudio -framework IOKit \
     -framework AVFoundation -framework CoreMedia -framework CoreVideo \
-    -framework ImageIO -framework UniformTypeIdentifiers -framework Security \
+    -framework ImageIO -framework UniformTypeIdentifiers -framework Security -framework Carbon \
     -Xlinker -weak_framework -Xlinker ScreenCaptureKit \
     Sources/*.swift -o "$BUILD/AudioTab-$1" 2> "$BUILD/errors-$1.txt"
 }

@@ -20,12 +20,18 @@ import UserNotifications
     private let dockDrag = DockDragAccelerator()
     private let updatePopup = UpdatePopupController()
     private var permTimer: Timer?
+    private var guardTimer: Timer?
+    private var secureActive = false
+    private var lastSecureNotice = Date.distantPast
     private var bag = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         gSwitcher = switcher
         gAudioKeys = audioKeys
         gExtraKeys = extraKeys
+        // Önceki çalışma kısayolları kapalı bırakmış olabilir (çökme, zorla kapatma): önce hepsini aç,
+        // AudioTab kısayolları dinlemeye başlayınca yalnızca gerekenler yeniden kapanır
+        setNativeHotkeys(allManagedNativeHotkeys, enabled: true)
         // Kapattığımız macOS kısayollarını (⌘Tab, ⌘⇧3/4/5…) her durumda geri aç
         signal(SIGTERM) { _ in restoreNativeHotkeys(); exit(0) }
         signal(SIGINT) { _ in restoreNativeHotkeys(); exit(0) }
@@ -115,6 +121,7 @@ import UserNotifications
             _ = CGRequestScreenCaptureAccess()
         }
         let opts = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        startGuard()
         if AXIsProcessTrustedWithOptions(opts) {
             switcher.start()
             applyExtraNative()
@@ -147,8 +154,40 @@ import UserNotifications
 
     /// macOS'un ⌘⇧3/4/5/6 ve ⌘< kısayollarını ayarlara göre kapat/aç (sadece kısayol dinleyicisi çalışıyorsa)
     private func applyExtraNative() {
-        guard switcher.isRunning else { return }
+        guard switcher.isRunning, !secureActive else { return }
         extraKeys.applyNative()
+    }
+
+    /// Hafif bekçi (1,5 sn): güvenli giriş kilidi, kapanmış olay dinleyicisi, sonradan verilen izin
+    private func startGuard() {
+        guardTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.guardTick() }
+        }
+        guardTimer?.tolerance = 0.5
+    }
+
+    private func guardTick() {
+        // İzin var ama dinleyici kurulamamışsa yeniden dene
+        if !switcher.isRunning, permTimer == nil, AXIsProcessTrusted() {
+            switcher.start()
+            applyExtraNative()
+        }
+        guard switcher.isRunning else { return }
+        let on = SecureInput.isOn
+        guard on != secureActive else { return }
+        secureActive = on
+        if on {
+            // Tuşlar bize ulaşamıyor: macOS'un kendi ⌘Tab'ı ve ekran görüntüsü kısayolları geçici olarak geri
+            setNativeHotkeys(allManagedNativeHotkeys, enabled: true)
+            guard Date().timeIntervalSince(lastSecureNotice) > 600 else { return }   // en fazla 10 dakikada bir haber ver
+            lastSecureNotice = Date()
+            let who = SecureInput.ownerName()
+            hud.show(name: who.map { L("%@ klavyeyi kilitledi · ⌘Tab şimdilik macOS'unki", $0) }
+                          ?? L("Güvenli giriş açık · ⌘Tab şimdilik macOS'unki"), symbol: "lock.fill")
+        } else {
+            switcher.applyNative()
+            applyExtraNative()
+        }
     }
 
     // MARK: Ses
