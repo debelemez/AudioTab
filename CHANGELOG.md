@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.22
+
+- Sharing quality tuned for WhatsApp: 720p, 30 fps, H.264, ~2 Mbit/s, with text gently sharpened
+- Removed the uncompressed recording format (ProRes 4444 is the sharpest option)
+
 ## 2.3.21
 
 - Choose the recording format: H.264, H.265 (HEVC), ProRes 4444 or fully uncompressed

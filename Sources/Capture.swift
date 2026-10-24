@@ -2,6 +2,7 @@ import Cocoa
 import SwiftUI
 import ScreenCaptureKit
 import AVFoundation
+import CoreImage
 import CoreMedia
 import ImageIO
 import UniformTypeIdentifiers
@@ -21,10 +22,8 @@ enum VideoFormat: String, CaseIterable {
     case hevc
     /// ProRes 4444 (.mov): görsel olarak kayıpsız, renkler tam (4:4:4), kurgu programları için
     case prores
-    /// Sıkıştırmasız RGB (.mov): kareler olduğu gibi yazılır, dosya çok büyük
-    case raw
 
-    var ext: String { (self == .prores || self == .raw) ? "mov" : "mp4" }
+    var ext: String { self == .prores ? "mov" : "mp4" }
     var usesQuality: Bool { self == .h264 || self == .hevc }
 }
 
@@ -431,6 +430,10 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
     private var writer: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
     private var audioInput: AVAssetWriterInput?
+    /// Paylaşım modunda kareler keskinleştirilip bu adaptörle yazılır
+    private var adaptor: AVAssetWriterInputPixelBufferAdaptor?
+    private var sharpen: CIFilter?
+    private lazy var ciContext = CIContext(options: [.cacheIntermediates: false])
     private var sessionStarted = false
     private var startTime = CMTime.zero
     private let queue = DispatchQueue(label: "audiotab.recorder", qos: .userInitiated)
@@ -449,10 +452,10 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         let fps = share ? min(requestedFPS, 30) : requestedFPS
         // H.264 sınırı: en fazla 4096 piksel genişlik ve 4096×2304 alan → gerekirse oranı koruyarak küçült.
         // H.265 / ProRes / sıkıştırmasız: 8192'ye kadar (5K/6K ekranlar birebir).
-        // Paylaşım modunda uzun kenar en fazla 1920 (telefonların videosu gibi).
+        // Paylaşım modunda WhatsApp'ın hedefi: uzun kenar 1280 (720p), 30 fps.
         var pw = r.width * scale, ph = r.height * scale
-        let longest: CGFloat = share ? 1920 : (format == .h264 ? 4096 : 8192)
-        let areaCap: CGFloat = format == .h264 ? (4096 * 2304 / (pw * ph)).squareRoot() : 1
+        let longest: CGFloat = share ? 1280 : (format == .h264 ? 4096 : 8192)
+        let areaCap: CGFloat = (format == .h264 || share) ? (4096 * 2304 / (pw * ph)).squareRoot() : 1
         let k = min(1, longest / max(pw, ph), areaCap)
         pw *= k; ph *= k
         let W = max(16, Int(pw) / 2 * 2), H = max(16, Int(ph) / 2 * 2)
@@ -475,8 +478,9 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         let w = try AVAssetWriter(outputURL: url, fileType: format.ext == "mov" ? .mov : .mp4)
         // Bit hızı: piksel × kare hızı × katsayı
         // (1440p60: yüksek ≈ 31, en yüksek ≈ 55, ham ≈ 200 Mbit/sn — ham modda kodlayıcının sınırına kadar)
-        let factor: Double = share ? 0.08 : (quality >= 2 ? 0.9 : (quality == 1 ? 0.25 : 0.14))
-        let bitrate = Int(Double(W * H * fps) * factor)
+        let factor: Double = quality >= 2 ? 0.9 : (quality == 1 ? 0.25 : 0.14)
+        // Paylaşım: ~2,2 Mbit/sn sabit hedef (720p30): 16 MB'a ~1 dakika sığar, WhatsApp'ın ikinci sıkıştırması hafif kalır
+        let bitrate = share ? Int(2_200_000 * Double(W * H) / (1280 * 720)) : Int(Double(W * H * fps) * factor)
         var compression: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,
             AVVideoProfileLevelKey: share ? AVVideoProfileLevelH264MainAutoLevel : AVVideoProfileLevelH264HighAutoLevel,
@@ -494,7 +498,7 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
             AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
         ]
         var videoSettings: [String: Any]?
-        switch format {
+        switch share ? .h264 : format {   // paylaşımda her telefonun açtığı H.264
         case .h264:
             videoSettings = [AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: W, AVVideoHeightKey: H,
                              AVVideoCompressionPropertiesKey: compression, AVVideoColorPropertiesKey: color]
@@ -509,13 +513,24 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         case .prores:
             videoSettings = [AVVideoCodecKey: AVVideoCodecType.proRes4444, AVVideoWidthKey: W, AVVideoHeightKey: H,
                              AVVideoColorPropertiesKey: color]
-        case .raw:
-            videoSettings = nil    // kareler olduğu gibi (BGRA) dosyaya yazılır
         }
         let vi = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
         vi.expectsMediaDataInRealTime = true
         guard w.canAdd(vi) else { throw CaptureError.writer }
         w.add(vi)
+        if share {
+            // Küçültülmüş yazılar mesajlaşma uygulamasının sıkıştırmasından sonra da okunsun: hafif keskinleştirme
+            adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: vi, sourcePixelBufferAttributes: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey as String: W,
+                kCVPixelBufferHeightKey as String: H,
+                kCVPixelBufferIOSurfacePropertiesKey as String: [String: Any](),
+            ])
+            sharpen = CIFilter(name: "CIUnsharpMask", parameters: [kCIInputRadiusKey: 1.2, kCIInputIntensityKey: 0.7])
+        } else {
+            adaptor = nil
+            sharpen = nil
+        }
 
         var ai: AVAssetWriterInput?
         if audio {
@@ -523,7 +538,7 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: 48_000,
                 AVNumberOfChannelsKey: 2,
-                AVEncoderBitRateKey: 256_000,
+                AVEncoderBitRateKey: share ? 128_000 : 256_000,
             ])
             a.expectsMediaDataInRealTime = true
             if w.canAdd(a) { w.add(a); ai = a }
@@ -556,7 +571,22 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
                 startTime = pts
                 sessionStarted = true
             }
-            if videoInput?.isReadyForMoreMediaData == true { videoInput?.append(sb) }
+            guard videoInput?.isReadyForMoreMediaData == true else { return }
+            if let adaptor, let sharpen, let src = CMSampleBufferGetImageBuffer(sb), let pool = adaptor.pixelBufferPool {
+                var out: CVPixelBuffer?
+                CVPixelBufferPoolCreatePixelBuffer(nil, pool, &out)
+                if let out {
+                    sharpen.setValue(CIImage(cvPixelBuffer: src), forKey: kCIInputImageKey)
+                    if let img = sharpen.outputImage {
+                        ciContext.render(img, to: out, bounds: CGRect(x: 0, y: 0, width: CVPixelBufferGetWidth(out),
+                                                                     height: CVPixelBufferGetHeight(out)),
+                                         colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
+                        adaptor.append(out, withPresentationTime: pts)
+                        return
+                    }
+                }
+            }
+            videoInput?.append(sb)
         } else if type == .audio {
             guard sessionStarted, CMSampleBufferGetPresentationTimeStamp(sb) >= startTime,
                   audioInput?.isReadyForMoreMediaData == true else { return }

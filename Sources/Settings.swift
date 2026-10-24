@@ -755,23 +755,21 @@ struct SettingsView: View {
                 }
                 Row(L("Biçim"), [L("H.264 (.mp4): her yerde açılır"),
                                  L("H.265 (.mp4): aynı kalitede yaklaşık yarı boyut; 5K/6K ekranlar birebir"),
-                                 L("ProRes 4444 (.mov): görsel olarak kayıpsız, renkler tam; kurgu için. Dosya büyük (1440p60'ta dakikada ~8 GB)"),
-                                 L("Sıkıştırmasız (.mov): kareler olduğu gibi. Çok büyük (1440p60'ta dakikada ~50 GB), hızlı SSD gerekir")][VideoFormat.allCases.firstIndex(of: CaptureSettings.format) ?? 0]) {
+                                 L("ProRes 4444 (.mov): görsel olarak kayıpsız, renkler tam; kurgu için. Dosya büyük (1440p60'ta dakikada ~8 GB)")][VideoFormat.allCases.firstIndex(of: CaptureSettings.format) ?? 0]) {
                     Picker("", selection: model.bind({ CaptureSettings.format }, { CaptureSettings.format = $0 })) {
                         Text("H.264").tag(VideoFormat.h264)
                         Text("H.265").tag(VideoFormat.hevc)
                         Text("ProRes").tag(VideoFormat.prores)
-                        Text(L("Sıkıştırmasız")).tag(VideoFormat.raw)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 320)
+                    .frame(width: 240)
                 }
                 if CaptureSettings.format.usesQuality {
                 Row(L("Kalite"), [L("Görüntü bozulmaz, dosya makul boyutta"),
                                   L("Kayıpsıza yakın, dosya büyük"),
                                   L("Ekranın gerçek çözünürlüğünde, H.264 neredeyse sıkıştırmasız: en net görüntü. Dosya çok büyük olur (1440p60'ta dakikada ~1,5 GB)"),
-                                  L("WhatsApp gibi uygulamalara göndermek için: 1080p, 30 fps, küçük dosya. Uygulama yeniden sıkıştırsa da yazılar okunur kalır")][CaptureSettings.quality]) {
+                                  L("WhatsApp için: 720p, 30 fps, H.264, ~2 Mbit/sn, yazılar hafif keskinleştirilir. 16 MB'a ~1 dakika sığar; HD olarak gönder")][CaptureSettings.quality]) {
                     Picker("", selection: model.bind({ CaptureSettings.quality }, { CaptureSettings.quality = $0 })) {
                         Text(L("Paylaşım")).tag(3)
                         Text(L("Yüksek")).tag(0)
