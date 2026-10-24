@@ -753,6 +753,21 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 160)
                 }
+                Row(L("Biçim"), [L("H.264 (.mp4): her yerde açılır"),
+                                 L("H.265 (.mp4): aynı kalitede yaklaşık yarı boyut; 5K/6K ekranlar birebir"),
+                                 L("ProRes 4444 (.mov): görsel olarak kayıpsız, renkler tam; kurgu için. Dosya büyük (1440p60'ta dakikada ~8 GB)"),
+                                 L("Sıkıştırmasız (.mov): kareler olduğu gibi. Çok büyük (1440p60'ta dakikada ~50 GB), hızlı SSD gerekir")][VideoFormat.allCases.firstIndex(of: CaptureSettings.format) ?? 0]) {
+                    Picker("", selection: model.bind({ CaptureSettings.format }, { CaptureSettings.format = $0 })) {
+                        Text("H.264").tag(VideoFormat.h264)
+                        Text("H.265").tag(VideoFormat.hevc)
+                        Text("ProRes").tag(VideoFormat.prores)
+                        Text(L("Sıkıştırmasız")).tag(VideoFormat.raw)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 320)
+                }
+                if CaptureSettings.format.usesQuality {
                 Row(L("Kalite"), [L("Görüntü bozulmaz, dosya makul boyutta"),
                                   L("Kayıpsıza yakın, dosya büyük"),
                                   L("Ekranın gerçek çözünürlüğünde, H.264 neredeyse sıkıştırmasız: en net görüntü. Dosya çok büyük olur (1440p60'ta dakikada ~1,5 GB)"),
@@ -766,6 +781,7 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 320)
+                }
                 }
                 ToggleRow(L("Sistem sesini kaydet"), L("Bilgisayardan çıkan ses videoya eklenir"),
                           isOn: model.bind({ CaptureSettings.recordAudio }, { CaptureSettings.recordAudio = $0 }))

@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.21
+
+- Choose the recording format: H.264, H.265 (HEVC), ProRes 4444 or fully uncompressed
+- H.265, ProRes and uncompressed recordings capture 5K/6K screens at full size
+
 ## 2.3.20
 
 - New "Sharing" recording quality: 1080p, 30 fps and a small file, so text stays readable when sent through apps like WhatsApp

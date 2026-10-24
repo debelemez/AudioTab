@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.21", items: [
+            ("Ekran kaydında biçim seçimi: H.264, H.265 (HEVC), ProRes 4444 ve tamamen sıkıştırmasız",
+             "Choose the recording format: H.264, H.265 (HEVC), ProRes 4444 or fully uncompressed"),
+            ("H.265, ProRes ve sıkıştırmasız kayıtlarda 5K/6K ekranlar küçültülmeden birebir kaydediliyor",
+             "H.265, ProRes and uncompressed recordings capture 5K/6K screens at full size"),
+        ]),
         ChangelogEntry(version: "2.3.20", items: [
             ("Ekran kaydına \"Paylaşım\" kalitesi: WhatsApp gibi uygulamalara gönderince yazılar okunur kalsın diye 1080p, 30 fps, küçük dosya",
              "New \"Sharing\" recording quality: 1080p, 30 fps and a small file, so text stays readable when sent through apps like WhatsApp"),

@@ -13,6 +13,21 @@ enum CaptureKind: String, CaseIterable {
     var folderKey: String { "capture.folder.\(rawValue)" }
 }
 
+/// Ekran kaydı biçimi
+enum VideoFormat: String, CaseIterable {
+    /// H.264 (.mp4): her yerde açılır
+    case h264
+    /// H.265 / HEVC (.mp4): aynı kalitede yaklaşık yarı boyut, 4096 piksel sınırı yok
+    case hevc
+    /// ProRes 4444 (.mov): görsel olarak kayıpsız, renkler tam (4:4:4), kurgu programları için
+    case prores
+    /// Sıkıştırmasız RGB (.mov): kareler olduğu gibi yazılır, dosya çok büyük
+    case raw
+
+    var ext: String { (self == .prores || self == .raw) ? "mov" : "mp4" }
+    var usesQuality: Bool { self == .h264 || self == .hevc }
+}
+
 enum CaptureSettings {
     private static var d: UserDefaults { .standard }
     private static func flag(_ key: String, _ def: Bool) -> Bool { d.object(forKey: key) as? Bool ?? def }
@@ -58,6 +73,11 @@ enum CaptureSettings {
             return flag("capture.maxQuality", false) ? 1 : 0     // eski ayar
         }
         set { d.set(min(max(newValue, 0), 3), forKey: "capture.quality") }
+    }
+    /// Video biçimi
+    static var format: VideoFormat {
+        get { VideoFormat(rawValue: d.string(forKey: "capture.format") ?? "") ?? .h264 }
+        set { d.set(newValue.rawValue, forKey: "capture.format") }
     }
     static var recordAudio: Bool {
         get { flag("capture.audio", true) }
@@ -420,18 +440,20 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
     /// rect: monitörün sol üst köşesine göre, nokta cinsinden. nil = tüm monitör.
     func start(displayID: CGDirectDisplayID, rect: CGRect?, scale: CGFloat, url: URL,
-               fps requestedFPS: Int, quality: Int, audio: Bool, cursor: Bool) async throws {
+               fps requestedFPS: Int, quality: Int, format: VideoFormat = .h264, audio: Bool, cursor: Bool) async throws {
         let (display, filter) = try await SCHelper.filter(displayID: displayID)
         let r = rect ?? CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
         guard r.width >= 16, r.height >= 16 else { throw CaptureError.tooSmall }
 
-        let share = quality == 3
+        let share = quality == 3 && format.usesQuality
         let fps = share ? min(requestedFPS, 30) : requestedFPS
         // H.264 sınırı: en fazla 4096 piksel genişlik ve 4096×2304 alan → gerekirse oranı koruyarak küçült.
+        // H.265 / ProRes / sıkıştırmasız: 8192'ye kadar (5K/6K ekranlar birebir).
         // Paylaşım modunda uzun kenar en fazla 1920 (telefonların videosu gibi).
         var pw = r.width * scale, ph = r.height * scale
-        let longest: CGFloat = share ? 1920 : 4096
-        let k = min(1, longest / max(pw, ph), (4096 * 2304 / (pw * ph)).squareRoot())
+        let longest: CGFloat = share ? 1920 : (format == .h264 ? 4096 : 8192)
+        let areaCap: CGFloat = format == .h264 ? (4096 * 2304 / (pw * ph)).squareRoot() : 1
+        let k = min(1, longest / max(pw, ph), areaCap)
         pw *= k; ph *= k
         let W = max(16, Int(pw) / 2 * 2), H = max(16, Int(ph) / 2 * 2)
 
@@ -450,7 +472,7 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
             cfg.excludesCurrentProcessAudio = true
         }
 
-        let w = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        let w = try AVAssetWriter(outputURL: url, fileType: format.ext == "mov" ? .mov : .mp4)
         // Bit hızı: piksel × kare hızı × katsayı
         // (1440p60: yüksek ≈ 31, en yüksek ≈ 55, ham ≈ 200 Mbit/sn — ham modda kodlayıcının sınırına kadar)
         let factor: Double = share ? 0.08 : (quality >= 2 ? 0.9 : (quality == 1 ? 0.25 : 0.14))
@@ -466,17 +488,30 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
             compression[AVVideoQualityKey] = 1.0          // en yüksek kalite: yazılar ve ince çizgiler net
             compression[AVVideoAllowFrameReorderingKey] = true
         }
-        let videoSettings: [String: Any] = [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: W,
-            AVVideoHeightKey: H,
-            AVVideoCompressionPropertiesKey: compression,
-            AVVideoColorPropertiesKey: [
-                AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
-                AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
-                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
-            ],
+        let color: [String: Any] = [
+            AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
+            AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
+            AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
         ]
+        var videoSettings: [String: Any]?
+        switch format {
+        case .h264:
+            videoSettings = [AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: W, AVVideoHeightKey: H,
+                             AVVideoCompressionPropertiesKey: compression, AVVideoColorPropertiesKey: color]
+        case .hevc:
+            // HEVC aynı kaliteyi yaklaşık %60 bit hızıyla verir
+            var c = compression
+            c[AVVideoAverageBitRateKey] = Int(Double(bitrate) * 0.6)
+            c[AVVideoProfileLevelKey] = nil
+            c[AVVideoH264EntropyModeKey] = nil
+            videoSettings = [AVVideoCodecKey: AVVideoCodecType.hevc, AVVideoWidthKey: W, AVVideoHeightKey: H,
+                             AVVideoCompressionPropertiesKey: c, AVVideoColorPropertiesKey: color]
+        case .prores:
+            videoSettings = [AVVideoCodecKey: AVVideoCodecType.proRes4444, AVVideoWidthKey: W, AVVideoHeightKey: H,
+                             AVVideoColorPropertiesKey: color]
+        case .raw:
+            videoSettings = nil    // kareler olduğu gibi (BGRA) dosyaya yazılır
+        }
         let vi = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
         vi.expectsMediaDataInRealTime = true
         guard w.canAdd(vi) else { throw CaptureError.writer }
@@ -1027,7 +1062,7 @@ struct CapturePaletteView: View {
     }
 
     private func record(screen: NSScreen, rect: CGRect?) {
-        let url = CaptureFiles.newURL(.video, prefix: L("Ekran Kaydı"), ext: "mp4")
+        let url = CaptureFiles.newURL(.video, prefix: L("Ekran Kaydı"), ext: CaptureSettings.format.ext)
         let id = displayID(of: screen)
         let scale = screen.backingScaleFactor
         isRecording = true
@@ -1036,6 +1071,7 @@ struct CapturePaletteView: View {
             do {
                 try await self.recorder.start(displayID: id, rect: rect, scale: scale, url: url,
                                               fps: CaptureSettings.fps, quality: CaptureSettings.quality,
+                                              format: CaptureSettings.format,
                                               audio: CaptureSettings.recordAudio, cursor: CaptureSettings.showCursor)
                 // Başlarken durdurulduysa
                 guard self.isRecording else { _ = await self.recorder.stop(); return }
