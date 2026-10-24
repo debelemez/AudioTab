@@ -755,15 +755,17 @@ struct SettingsView: View {
                 }
                 Row(L("Kalite"), [L("Görüntü bozulmaz, dosya makul boyutta"),
                                   L("Kayıpsıza yakın, dosya büyük"),
-                                  L("Ekranın gerçek çözünürlüğünde, H.264 neredeyse sıkıştırmasız: en net görüntü. Dosya çok büyük olur (1440p60'ta dakikada ~1,5 GB)")][CaptureSettings.quality]) {
+                                  L("Ekranın gerçek çözünürlüğünde, H.264 neredeyse sıkıştırmasız: en net görüntü. Dosya çok büyük olur (1440p60'ta dakikada ~1,5 GB)"),
+                                  L("WhatsApp gibi uygulamalara göndermek için: 1080p, 30 fps, küçük dosya. Uygulama yeniden sıkıştırsa da yazılar okunur kalır")][CaptureSettings.quality]) {
                     Picker("", selection: model.bind({ CaptureSettings.quality }, { CaptureSettings.quality = $0 })) {
+                        Text(L("Paylaşım")).tag(3)
                         Text(L("Yüksek")).tag(0)
                         Text(L("En yüksek")).tag(1)
                         Text(L("Ham")).tag(2)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 240)
+                    .frame(width: 320)
                 }
                 ToggleRow(L("Sistem sesini kaydet"), L("Bilgisayardan çıkan ses videoya eklenir"),
                           isOn: model.bind({ CaptureSettings.recordAudio }, { CaptureSettings.recordAudio = $0 }))

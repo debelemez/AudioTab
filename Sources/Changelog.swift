@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.20", items: [
+            ("Ekran kaydına \"Paylaşım\" kalitesi: WhatsApp gibi uygulamalara gönderince yazılar okunur kalsın diye 1080p, 30 fps, küçük dosya",
+             "New \"Sharing\" recording quality: 1080p, 30 fps and a small file, so text stays readable when sent through apps like WhatsApp"),
+        ]),
         ChangelogEntry(version: "2.3.19", items: [
             ("Ekran kaydına \"Ham\" kalite: ekranın gerçek çözünürlüğünde, neredeyse sıkıştırmasız H.264, en net görüntü",
              "New \"Raw\" recording quality: your screen's true resolution, almost uncompressed H.264, the sharpest picture"),

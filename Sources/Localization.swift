@@ -336,6 +336,8 @@ private let englishStrings: [String: String] = [
     "%@ klavyeyi kilitledi · ⌘Tab şimdilik macOS'unki": "%@ locked the keyboard · ⌘Tab uses macOS's for now",
     "Güvenli giriş açık · ⌘Tab şimdilik macOS'unki": "Secure input is on · ⌘Tab uses macOS's for now",
     "Ham": "Raw",
+    "Paylaşım": "Sharing",
+    "WhatsApp gibi uygulamalara göndermek için: 1080p, 30 fps, küçük dosya. Uygulama yeniden sıkıştırsa da yazılar okunur kalır": "For sending in apps like WhatsApp: 1080p, 30 fps, small file. Text stays readable even after the app recompresses it",
     "Ekranın gerçek çözünürlüğünde, H.264 neredeyse sıkıştırmasız: en net görüntü. Dosya çok büyük olur (1440p60'ta dakikada ~1,5 GB)": "At your screen's true resolution, H.264 with almost no compression: the sharpest picture. Files get very large (~1.5 GB per minute at 1440p60)",
     // Fare
     "Fare": "Mouse",

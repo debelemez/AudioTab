@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.20
+
+- New "Sharing" recording quality: 1080p, 30 fps and a small file, so text stays readable when sent through apps like WhatsApp
+
 ## 2.3.19
 
 - New "Raw" recording quality: your screen's true resolution, almost uncompressed H.264, the sharpest picture

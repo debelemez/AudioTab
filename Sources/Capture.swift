@@ -50,13 +50,14 @@ enum CaptureSettings {
         get { min(max(d.object(forKey: "capture.fps") as? Int ?? 60, 1), 120) }
         set { d.set(newValue, forKey: "capture.fps") }
     }
-    /// Video kalitesi: 0 yüksek, 1 en yüksek, 2 ham (H.264, sıkıştırma neredeyse yok, en net)
+    /// Video kalitesi: 0 yüksek, 1 en yüksek, 2 ham (neredeyse sıkıştırmasız),
+    /// 3 paylaşım (WhatsApp vb.: 1080p, 30 fps, küçük dosya; uygulamalar yeniden sıkıştırınca yazılar okunur kalır)
     static var quality: Int {
         get {
-            if let q = d.object(forKey: "capture.quality") as? Int { return min(max(q, 0), 2) }
+            if let q = d.object(forKey: "capture.quality") as? Int { return min(max(q, 0), 3) }
             return flag("capture.maxQuality", false) ? 1 : 0     // eski ayar
         }
-        set { d.set(min(max(newValue, 0), 2), forKey: "capture.quality") }
+        set { d.set(min(max(newValue, 0), 3), forKey: "capture.quality") }
     }
     static var recordAudio: Bool {
         get { flag("capture.audio", true) }
@@ -419,14 +420,18 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
     /// rect: monitörün sol üst köşesine göre, nokta cinsinden. nil = tüm monitör.
     func start(displayID: CGDirectDisplayID, rect: CGRect?, scale: CGFloat, url: URL,
-               fps: Int, quality: Int, audio: Bool, cursor: Bool) async throws {
+               fps requestedFPS: Int, quality: Int, audio: Bool, cursor: Bool) async throws {
         let (display, filter) = try await SCHelper.filter(displayID: displayID)
         let r = rect ?? CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
         guard r.width >= 16, r.height >= 16 else { throw CaptureError.tooSmall }
 
-        // H.264 sınırı: en fazla 4096 piksel genişlik ve 4096×2304 alan → gerekirse oranı koruyarak küçült
+        let share = quality == 3
+        let fps = share ? min(requestedFPS, 30) : requestedFPS
+        // H.264 sınırı: en fazla 4096 piksel genişlik ve 4096×2304 alan → gerekirse oranı koruyarak küçült.
+        // Paylaşım modunda uzun kenar en fazla 1920 (telefonların videosu gibi).
         var pw = r.width * scale, ph = r.height * scale
-        let k = min(1, 4096 / max(pw, ph), (4096 * 2304 / (pw * ph)).squareRoot())
+        let longest: CGFloat = share ? 1920 : 4096
+        let k = min(1, longest / max(pw, ph), (4096 * 2304 / (pw * ph)).squareRoot())
         pw *= k; ph *= k
         let W = max(16, Int(pw) / 2 * 2), H = max(16, Int(ph) / 2 * 2)
 
@@ -448,16 +453,16 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         let w = try AVAssetWriter(outputURL: url, fileType: .mp4)
         // Bit hızı: piksel × kare hızı × katsayı
         // (1440p60: yüksek ≈ 31, en yüksek ≈ 55, ham ≈ 200 Mbit/sn — ham modda kodlayıcının sınırına kadar)
-        let factor: Double = quality >= 2 ? 0.9 : (quality == 1 ? 0.25 : 0.14)
+        let factor: Double = share ? 0.08 : (quality >= 2 ? 0.9 : (quality == 1 ? 0.25 : 0.14))
         let bitrate = Int(Double(W * H * fps) * factor)
         var compression: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,
-            AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
+            AVVideoProfileLevelKey: share ? AVVideoProfileLevelH264MainAutoLevel : AVVideoProfileLevelH264HighAutoLevel,
             AVVideoExpectedSourceFrameRateKey: fps,
-            AVVideoMaxKeyFrameIntervalKey: quality >= 2 ? fps : fps * 2,
+            AVVideoMaxKeyFrameIntervalKey: quality == 2 ? fps : fps * 2,
             AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC,
         ]
-        if quality >= 2 {
+        if quality == 2 {
             compression[AVVideoQualityKey] = 1.0          // en yüksek kalite: yazılar ve ince çizgiler net
             compression[AVVideoAllowFrameReorderingKey] = true
         }
