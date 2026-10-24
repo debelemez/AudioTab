@@ -50,10 +50,13 @@ enum CaptureSettings {
         get { min(max(d.object(forKey: "capture.fps") as? Int ?? 60, 1), 120) }
         set { d.set(newValue, forKey: "capture.fps") }
     }
-    /// true: kayıpsıza yakın (büyük dosya), false: yüksek kalite
-    static var maxQuality: Bool {
-        get { flag("capture.maxQuality", false) }
-        set { d.set(newValue, forKey: "capture.maxQuality") }
+    /// Video kalitesi: 0 yüksek, 1 en yüksek, 2 ham (H.264, sıkıştırma neredeyse yok, en net)
+    static var quality: Int {
+        get {
+            if let q = d.object(forKey: "capture.quality") as? Int { return min(max(q, 0), 2) }
+            return flag("capture.maxQuality", false) ? 1 : 0     // eski ayar
+        }
+        set { d.set(min(max(newValue, 0), 2), forKey: "capture.quality") }
     }
     static var recordAudio: Bool {
         get { flag("capture.audio", true) }
@@ -416,7 +419,7 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
     /// rect: monitörün sol üst köşesine göre, nokta cinsinden. nil = tüm monitör.
     func start(displayID: CGDirectDisplayID, rect: CGRect?, scale: CGFloat, url: URL,
-               fps: Int, maxQuality: Bool, audio: Bool, cursor: Bool) async throws {
+               fps: Int, quality: Int, audio: Bool, cursor: Bool) async throws {
         let (display, filter) = try await SCHelper.filter(displayID: displayID)
         let r = rect ?? CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
         guard r.width >= 16, r.height >= 16 else { throw CaptureError.tooSmall }
@@ -443,15 +446,21 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         }
 
         let w = try AVAssetWriter(outputURL: url, fileType: .mp4)
-        // Bit hızı: piksel × kare hızı × katsayı (1440p60 yüksek ≈ 31 Mbit/sn, en yüksek ≈ 55 Mbit/sn)
-        let bitrate = Int(Double(W * H * fps) * (maxQuality ? 0.25 : 0.14))
-        let compression: [String: Any] = [
+        // Bit hızı: piksel × kare hızı × katsayı
+        // (1440p60: yüksek ≈ 31, en yüksek ≈ 55, ham ≈ 200 Mbit/sn — ham modda kodlayıcının sınırına kadar)
+        let factor: Double = quality >= 2 ? 0.9 : (quality == 1 ? 0.25 : 0.14)
+        let bitrate = Int(Double(W * H * fps) * factor)
+        var compression: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,
             AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
             AVVideoExpectedSourceFrameRateKey: fps,
-            AVVideoMaxKeyFrameIntervalKey: fps * 2,
+            AVVideoMaxKeyFrameIntervalKey: quality >= 2 ? fps : fps * 2,
             AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC,
         ]
+        if quality >= 2 {
+            compression[AVVideoQualityKey] = 1.0          // en yüksek kalite: yazılar ve ince çizgiler net
+            compression[AVVideoAllowFrameReorderingKey] = true
+        }
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: W,
@@ -1021,7 +1030,7 @@ struct CapturePaletteView: View {
         Task { @MainActor in
             do {
                 try await self.recorder.start(displayID: id, rect: rect, scale: scale, url: url,
-                                              fps: CaptureSettings.fps, maxQuality: CaptureSettings.maxQuality,
+                                              fps: CaptureSettings.fps, quality: CaptureSettings.quality,
                                               audio: CaptureSettings.recordAudio, cursor: CaptureSettings.showCursor)
                 // Başlarken durdurulduysa
                 guard self.isRecording else { _ = await self.recorder.stop(); return }

@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.3.19
+
+- New "Raw" recording quality: your screen's true resolution, almost uncompressed H.264, the sharpest picture
+
 ## 2.3.18
 
 - When an app like KeePassXC locks the keyboard (secure input), ⌘Tab no longer dies: macOS's own ⌘Tab takes over meanwhile

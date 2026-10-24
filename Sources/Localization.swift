@@ -335,6 +335,8 @@ private let englishStrings: [String: String] = [
     "Rozet yanlışsa bunu kopyalayıp gönder: pencerelerin düğme yazılarını içerir (e-posta yok)": "If the badge is wrong, copy this and send it: it contains the windows' button labels (no emails)",
     "%@ klavyeyi kilitledi · ⌘Tab şimdilik macOS'unki": "%@ locked the keyboard · ⌘Tab uses macOS's for now",
     "Güvenli giriş açık · ⌘Tab şimdilik macOS'unki": "Secure input is on · ⌘Tab uses macOS's for now",
+    "Ham": "Raw",
+    "Ekranın gerçek çözünürlüğünde, H.264 neredeyse sıkıştırmasız: en net görüntü. Dosya çok büyük olur (1440p60'ta dakikada ~1,5 GB)": "At your screen's true resolution, H.264 with almost no compression: the sharpest picture. Files get very large (~1.5 GB per minute at 1440p60)",
     // Fare
     "Fare": "Mouse",
     "Finder'da yan tuşlarla geri / ileri": "Back / forward in Finder with the side buttons",

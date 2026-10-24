@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.3.19", items: [
+            ("Ekran kaydına \"Ham\" kalite: ekranın gerçek çözünürlüğünde, neredeyse sıkıştırmasız H.264, en net görüntü",
+             "New \"Raw\" recording quality: your screen's true resolution, almost uncompressed H.264, the sharpest picture"),
+        ]),
         ChangelogEntry(version: "2.3.18", items: [
             ("KeePassXC gibi bir uygulama klavyeyi kilitlediğinde (güvenli giriş) ⌘Tab artık ölmüyor: o sırada macOS'un kendi ⌘Tab'ı devreye giriyor",
              "When an app like KeePassXC locks the keyboard (secure input), ⌘Tab no longer dies: macOS's own ⌘Tab takes over meanwhile"),
