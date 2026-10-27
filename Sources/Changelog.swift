@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.4.1", items: [
+            ("⌘⇧< artık tam karartma: harici ekranlarda hiç görüntü kalmıyor (DDC desteklemeyen monitörlerde de)",
+             "⌘⇧< now blacks out completely: no picture left on external displays (also on displays without DDC)"),
+        ]),
         ChangelogEntry(version: "2.4.0", items: [
             ("Harici monitörlerin parlaklığı ve sesi menü çubuğundan ve Ayarlar › Ekran'dan ayarlanıyor (Mac'in kendi ekranı hariç)",
              "Adjust external displays' brightness and volume from the menu bar and Settings › Screen (your Mac's built-in screen is excluded)"),

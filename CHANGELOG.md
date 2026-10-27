@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.4.1
+
+- ⌘⇧< now blacks out completely: no picture left on external displays (also on displays without DDC)
+
 ## 2.4.0
 
 - Adjust external displays' brightness and volume from the menu bar and Settings › Screen (your Mac's built-in screen is excluded)

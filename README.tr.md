@@ -103,7 +103,7 @@ Birden fazla monitörde her ekranda büyük bir numara çıkar. Hedef, farenin o
 ## Harici monitörler
 
 - Her **harici** monitör için parlaklık ve ses kaydırıcısı: menü çubuğu menüsünde ve Ayarlar › Ekran'da. Mac'in kendi ekranı dahil değil.
-- **⌘⇧<** bütün harici monitörlerin parlaklığını anında 0'a çeker; tekrar basınca eski haline döner.
+- **⌘⇧<** bütün harici monitörleri anında tamamen karartır, hiç görüntü kalmaz; tekrar basınca eski haline döner.
 - Apple Silicon Mac'lerde DDC/CI ile çalışır. Bazı monitörler ya da HDMI bağlantıları DDC desteklemez; orada kaydırıcılar etkisiz kalır.
 
 ## Ayarlar

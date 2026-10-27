@@ -602,7 +602,7 @@ struct SettingsView: View {
         Card(title: L("Harici monitörler"), icon: "display.2") {
             ToggleRow(L("Menü çubuğunda göster"), L("Menüde her harici monitör için parlaklık ve ses kaydırıcısı"),
                       isOn: model.bind({ MonitorSettings.showInMenu }, { MonitorSettings.showInMenu = $0 }))
-            ToggleRow(L("⌘⇧< ile karart"), L("Harici monitörlerin parlaklığını anında 0'a çeker; tekrar basınca eski haline döner"),
+            ToggleRow(L("⌘⇧< ile karart"), L("Harici monitörleri anında tamamen karartır, hiç görüntü kalmaz; tekrar basınca eski haline döner"),
                       isOn: model.bind({ MonitorSettings.blackoutKey }, { MonitorSettings.blackoutKey = $0 }))
             Divider().opacity(0.4)
             if !monitors.ddcAvailable {

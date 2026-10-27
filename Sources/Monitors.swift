@@ -136,7 +136,9 @@ private enum DDC {
     @Published private(set) var displays: [Display] = []
     /// ⌘⇧< ile karartıldıysa önceki parlaklıklar
     private var savedBrightness: [CGDirectDisplayID: Double] = [:]
-    var isBlackedOut: Bool { !savedBrightness.isEmpty }
+    /// Tam karartma: her harici ekranın üstünde tamamen siyah bir pencere (+ DDC ile parlaklık 0)
+    private var blackWindows: [NSWindow] = []
+    @Published private(set) var isBlackedOut = false
 
     private let io = DispatchQueue(label: "audiotab.ddc", qos: .userInitiated)
     private var pending: [String: (CFTypeRef, UInt8, Int)] = [:]
@@ -157,6 +159,7 @@ private enum DDC {
             if readValues { readAll(displays) }
             return
         }
+        if isBlackedOut { showBlackWindows() }   // ekranlar değiştiyse siyah pencereleri yeniden yerleştir
         var services = DDC.externalServices()
         var list: [Display] = []
         for (id, name) in externals {
@@ -199,7 +202,7 @@ private enum DDC {
     func setBrightness(_ value: Double, for id: CGDirectDisplayID) {
         guard let i = displays.firstIndex(where: { $0.id == id }) else { return }
         displays[i].brightness = value
-        if value > 0 { savedBrightness[id] = nil }
+        if value > 0, !isBlackedOut { savedBrightness[id] = nil }
         send(displays[i], vcp: 0x10, percent: value, max: displays[i].brightnessMax)
     }
 
@@ -209,21 +212,50 @@ private enum DDC {
         send(displays[i], vcp: 0x62, percent: value, max: displays[i].volumeMax)
     }
 
-    /// ⌘⇧<: hepsini 0'a çek; tekrar basınca önceki parlaklıklar geri gelir
+    /// ⌘⇧<: harici ekranlar tamamen kararır (görüntü kalmaz); tekrar basınca her şey eski haline döner.
+    /// Siyah pencere her monitörde çalışır; DDC destekleyen monitörlerde arka ışık da 0'a iner.
     @discardableResult
     func toggleBlackout() -> Bool {
         if displays.isEmpty { refresh(readValues: false) }
         if isBlackedOut {
+            isBlackedOut = false
+            removeBlackWindows()
             for (id, b) in savedBrightness { setBrightness(b, for: id) }
             savedBrightness.removeAll()
             return false
         }
+        isBlackedOut = true
         for d in displays where d.ddc {
             savedBrightness[d.id] = d.brightness > 0 ? d.brightness : 50
             setBrightness(0, for: d.id)
-            savedBrightness[d.id] = savedBrightness[d.id] ?? 50
         }
+        showBlackWindows()
         return true
+    }
+
+    private func showBlackWindows() {
+        removeBlackWindows()
+        for s in NSScreen.screens {
+            guard let id = s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+                  CGDisplayIsBuiltin(id) == 0 else { continue }      // Mac'in kendi ekranı hariç
+            let w = NSWindow(contentRect: s.frame, styleMask: .borderless, backing: .buffered, defer: false, screen: s)
+            w.setFrame(s.frame, display: false)
+            w.backgroundColor = .black
+            w.isOpaque = true
+            w.hasShadow = false
+            w.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
+            w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+            w.isReleasedWhenClosed = false
+            w.animationBehavior = .none
+            w.ignoresMouseEvents = false        // karanlık ekrana yanlışlıkla tıklanmasın
+            w.orderFrontRegardless()
+            blackWindows.append(w)
+        }
+    }
+
+    private func removeBlackWindows() {
+        blackWindows.forEach { $0.orderOut(nil) }
+        blackWindows.removeAll()
     }
 
     /// Kaydırıcı sürüklenirken komutlar birikmesin: her monitör/ayar için sadece son değer gönderilir

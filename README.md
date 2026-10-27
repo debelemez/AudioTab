@@ -103,7 +103,7 @@ With several displays, a big number appears on each screen. The target is the di
 ## External displays
 
 - Brightness and volume sliders for each **external** display, right in the menu bar menu and in Settings › Screen. Your Mac's built-in screen isn't included.
-- **⌘⇧<** instantly dims all external displays to 0; press it again to bring the brightness back.
+- **⌘⇧<** instantly blacks out all external displays completely; press it again to bring them back.
 - Works over DDC/CI on Apple silicon Macs. Some displays or HDMI connections don't support DDC; there the sliders have no effect.
 
 ## Settings

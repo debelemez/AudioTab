@@ -76,8 +76,8 @@ import UserNotifications
             guard let self else { return }
             let mon = Monitors.shared
             if mon.displays.isEmpty { mon.refresh(readValues: false) }
-            guard mon.displays.contains(where: \.ddc) else {
-                self.hud.show(name: L("Parlaklığı ayarlanabilen harici monitör yok"), symbol: "display")
+            guard !mon.displays.isEmpty || mon.isBlackedOut else {
+                self.hud.show(name: L("Bağlı harici monitör yok"), symbol: "display")
                 return
             }
             let dark = mon.toggleBlackout()
