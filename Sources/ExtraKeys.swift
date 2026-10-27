@@ -10,6 +10,7 @@ import Cocoa
     var onCaptureMenu: (() -> Void)?     // ⌘⇧5
     var onScrolling: (() -> Void)?       // ⌘⇧6
     var onTile: (() -> Void)?            // ⌘<
+    var onBlackout: (() -> Void)?        // ⌘⇧<: harici monitörleri karart / geri getir
     /// true dönerse hiçbir şey yapılmaz (ör. ⌘Tab paneli açıkken)
     var isBlocked: (() -> Bool)?
 
@@ -31,7 +32,9 @@ import Cocoa
         guard cmd, !flags.contains(.maskControl), !flags.contains(.maskAlternate) else { return false }
 
         var action: (() -> Void)?
-        if shift {
+        if shift && MonitorSettings.blackoutKey && Self.isShiftLessThan(event) {
+            action = onBlackout
+        } else if shift {
             if CaptureSettings.enabled {
                 switch code {
                 case Self.key3 where CaptureSettings.screenKey: action = onScreenshot
@@ -53,6 +56,13 @@ import Cocoa
             DispatchQueue.main.async { MainActor.assumeIsolated { action() } }
         }
         return true
+    }
+
+    /// ⌘⇧<: Türkçe Q'da "<" tuşu (⇧ ile ">" olur), ABD düzeninde ⇧+virgül ("<")
+    private static func isShiftLessThan(_ event: CGEvent) -> Bool {
+        guard let ns = NSEvent(cgEvent: event) else { return false }
+        if ns.characters(byApplyingModifiers: []) == "<" { return true }
+        return ns.charactersIgnoringModifiers == "<"
     }
 
     /// Klavye düzeninden bağımsız: basılan tuş "<" karakterini üretiyor mu (Türkçe Q'da sol ⇧ yanındaki tuş).

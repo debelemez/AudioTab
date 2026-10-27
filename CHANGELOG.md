@@ -3,6 +3,11 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.4.0
+
+- Adjust external displays' brightness and volume from the menu bar and Settings › Screen (your Mac's built-in screen is excluded)
+- ⌘⇧< instantly dims external displays; press again to restore the previous brightness
+
 ## 2.3.22
 
 - Sharing quality tuned for WhatsApp: 720p, 30 fps, H.264, ~2 Mbit/s, with text gently sharpened

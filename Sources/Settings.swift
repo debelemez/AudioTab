@@ -121,6 +121,7 @@ struct SettingsView: View {
     @ObservedObject var store: DeviceStore
     @ObservedObject var updater: Updater
     @State private var tab = 0
+    @ObservedObject private var monitors = Monitors.shared
     @State private var confirmRelease: ReleaseInfo?
     /// Sürümler sekmesinde büyütülmüş kutular
     @State private var expandedVersions = Set<String>()
@@ -595,6 +596,67 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: Harici monitörler (parlaklık / ses)
+
+    @ViewBuilder private var monitorsCard: some View {
+        Card(title: L("Harici monitörler"), icon: "display.2") {
+            ToggleRow(L("Menü çubuğunda göster"), L("Menüde her harici monitör için parlaklık ve ses kaydırıcısı"),
+                      isOn: model.bind({ MonitorSettings.showInMenu }, { MonitorSettings.showInMenu = $0 }))
+            ToggleRow(L("⌘⇧< ile karart"), L("Harici monitörlerin parlaklığını anında 0'a çeker; tekrar basınca eski haline döner"),
+                      isOn: model.bind({ MonitorSettings.blackoutKey }, { MonitorSettings.blackoutKey = $0 }))
+            Divider().opacity(0.4)
+            if !monitors.ddcAvailable {
+                Text(L("Bu Mac'te monitör kontrolü desteklenmiyor (Apple Silicon gerekir)."))
+                    .font(.system(size: 11.5)).foregroundStyle(.orange)
+            } else if monitors.displays.isEmpty {
+                Text(L("Bağlı harici monitör yok. Mac'in kendi ekranı burada yer almaz."))
+                    .font(.system(size: 11.5)).foregroundStyle(.white.opacity(0.6))
+            } else {
+                ForEach(monitors.displays) { d in monitorRow(d) }
+            }
+            HStack {
+                Text(L("Monitör DDC/CI desteklemiyorsa (bazı HDMI bağlantıları) kaydırıcılar etkisiz kalır."))
+                    .font(.system(size: 10.5)).foregroundStyle(.white.opacity(0.45))
+                Spacer()
+                Button { monitors.refresh(rescan: true) } label: { Label(L("Yenile"), systemImage: "arrow.clockwise") }
+            }
+        }
+        .onAppear { monitors.refresh() }
+    }
+
+    private func monitorRow(_ d: Monitors.Display) -> some View {
+        let id = d.id
+        let bright = Binding<Double>(get: { monitors.displays.first { $0.id == id }?.brightness ?? 0 },
+                                     set: { monitors.setBrightness($0, for: id) })
+        let vol = Binding<Double>(get: { monitors.displays.first { $0.id == id }?.volume ?? 0 },
+                                  set: { monitors.setVolume($0, for: id) })
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "display")
+                Text(d.name).font(.system(size: 13, weight: .semibold))
+                if !d.ddc {
+                    Text(L("desteklemiyor")).font(.system(size: 10.5)).foregroundStyle(.orange)
+                }
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "sun.max.fill").frame(width: 18).foregroundStyle(.white.opacity(0.7))
+                Slider(value: bright, in: 0...100)
+                Text("\(Int(bright.wrappedValue))").font(.system(size: 11, design: .monospaced)).frame(width: 30, alignment: .trailing)
+            }
+            .disabled(!d.ddc)
+            if d.volumeSupported {
+                HStack(spacing: 10) {
+                    Image(systemName: "speaker.wave.2.fill").frame(width: 18).foregroundStyle(.white.opacity(0.7))
+                    Slider(value: vol, in: 0...100)
+                    Text("\(Int(vol.wrappedValue))").font(.system(size: 11, design: .monospaced)).frame(width: 30, alignment: .trailing)
+                }
+                .disabled(!d.ddc)
+            }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(.white.opacity(0.05)))
+    }
+
     private func addFavoriteFolders(_ profile: Profile) {
         let p = NSOpenPanel()
         p.canChooseDirectories = true
@@ -688,6 +750,7 @@ struct SettingsView: View {
     // MARK: Ekran (bölme + çekim)
 
     @ViewBuilder private var screenTab: some View {
+        monitorsCard
         Card(title: L("Ekranı böl  ⌘<"), icon: "rectangle.split.3x1") {
             ToggleRow(L("Kısayolu kullan"),
                       L("⌘< → kaça bölüneceğini seç → hangi pencere hangi bölmeye. ⌘Tab kartlarındaki bölme düğmesi aynı işi tek pencere için yapar. Açıkken macOS'un ⌘< (aynı uygulamanın pencereleri arasında geçiş) kısayolu kapanır."),

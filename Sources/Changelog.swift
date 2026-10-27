@@ -16,6 +16,12 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.4.0", items: [
+            ("Harici monitörlerin parlaklığı ve sesi menü çubuğundan ve Ayarlar › Ekran'dan ayarlanıyor (Mac'in kendi ekranı hariç)",
+             "Adjust external displays' brightness and volume from the menu bar and Settings › Screen (your Mac's built-in screen is excluded)"),
+            ("⌘⇧< ile harici monitörler anında kararıyor, tekrar basınca eski parlaklığa dönüyor",
+             "⌘⇧< instantly dims external displays; press again to restore the previous brightness"),
+        ]),
         ChangelogEntry(version: "2.3.22", items: [
             ("Paylaşım kalitesi WhatsApp'a göre ayarlandı: 720p, 30 fps, H.264, ~2 Mbit/sn; yazılar hafifçe keskinleştiriliyor",
              "Sharing quality tuned for WhatsApp: 720p, 30 fps, H.264, ~2 Mbit/s, with text gently sharpened"),

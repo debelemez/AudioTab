@@ -100,6 +100,12 @@ Birden fazla monitörde her ekranda büyük bir numara çıkar. Hedef, farenin o
 - Çekimden sonra sağ altta bir **önizleme** çıkar. Tıklayınca dosya Finder'da seçili olarak açılır.
 - Her tür için ayrı kayıt klasörü seçilebilir. Hepsini tek anahtarla kapatırsan macOS'un kendi kısayolları geri gelir.
 
+## Harici monitörler
+
+- Her **harici** monitör için parlaklık ve ses kaydırıcısı: menü çubuğu menüsünde ve Ayarlar › Ekran'da. Mac'in kendi ekranı dahil değil.
+- **⌘⇧<** bütün harici monitörlerin parlaklığını anında 0'a çeker; tekrar basınca eski haline döner.
+- Apple Silicon Mac'lerde DDC/CI ile çalışır. Bazı monitörler ya da HDMI bağlantıları DDC desteklemez; orada kaydırıcılar etkisiz kalır.
+
 ## Ayarlar
 
 <img src="docs/images/tr/settings.jpg" alt="Ayarlar penceresi" width="900">
@@ -158,6 +164,8 @@ AudioTab ikisinin birleşimi, ayarların ilk açılışta otomatik taşınır. E
 | ⌘Tab açıkken **S** | Uygulamanın ses cihazını değiştir |
 | **⌘ + ⇧'ye dokun** | Ses çıkışı (sıradaki cihaz ya da liste) |
 | **⌘<** | Ekranı böl |
+| **⌘⇧<** | Harici monitörleri karart / geri getir |
+| ⌘Tab'da **é** (Tab'ın üstündeki tuş) ya da **F** | Sadece seçili kartın uygulaması |
 | **⌘⇧3** | Bulunduğun monitörün görüntüsü |
 | **⌘⇧4** | Alan görüntüsü |
 | **⌘⇧5** | Çekim paleti / kaydı durdur |

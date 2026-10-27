@@ -100,6 +100,12 @@ With several displays, a big number appears on each screen. The target is the di
 - After a capture, a **preview** appears at the bottom right. Click it to open the file selected in Finder.
 - You can pick a separate save folder for each type. Turn everything off with one switch and the macOS shortcuts come back.
 
+## External displays
+
+- Brightness and volume sliders for each **external** display, right in the menu bar menu and in Settings › Screen. Your Mac's built-in screen isn't included.
+- **⌘⇧<** instantly dims all external displays to 0; press it again to bring the brightness back.
+- Works over DDC/CI on Apple silicon Macs. Some displays or HDMI connections don't support DDC; there the sliders have no effect.
+
 ## Settings
 
 <img src="docs/images/settings.jpg" alt="Settings window" width="900">
@@ -158,6 +164,8 @@ AudioTab combines both, and your settings carry over automatically on first laun
 | **S** in ⌘Tab | Change the app's sound device |
 | **Hold ⌘, tap ⇧** | Sound output (next device or list) |
 | **⌘<** | Split screen |
+| **⌘⇧<** | Dim external displays / restore |
+| **é** (key above Tab) or **F** in ⌘Tab | Only the selected card's app |
 | **⌘⇧3** | Screenshot of the display you're on |
 | **⌘⇧4** | Area screenshot |
 | **⌘⇧5** | Capture palette / stop recording |

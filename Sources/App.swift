@@ -72,6 +72,23 @@ import UserNotifications
         extraKeys.onCaptureMenu = { [weak self] in self?.capture.paletteOrStop() }
         extraKeys.onScrolling = { [weak self] in self?.capture.scrollingScreenshot() }
         extraKeys.onTile = { [weak self] in self?.tiling.trigger() }
+        extraKeys.onBlackout = { [weak self] in
+            guard let self else { return }
+            let mon = Monitors.shared
+            if mon.displays.isEmpty { mon.refresh(readValues: false) }
+            guard mon.displays.contains(where: \.ddc) else {
+                self.hud.show(name: L("Parlaklığı ayarlanabilen harici monitör yok"), symbol: "display")
+                return
+            }
+            let dark = mon.toggleBlackout()
+            self.hud.show(name: dark ? L("Harici monitörler karartıldı · ⌘⇧< ile geri") : L("Harici monitörlerin parlaklığı geri geldi"),
+                          symbol: dark ? "moon.fill" : "sun.max.fill")
+        }
+        // Harici monitör listesi (parlaklık / ses için)
+        Monitors.shared.refresh(rescan: true)
+        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { Monitors.shared.refresh(rescan: true) }
+        }
         extraKeys.isBlocked = { [weak self] in self?.switcher.isActive ?? false }
         tiling.itemsProvider = { [weak self] in self?.switcher.snapshotItems() ?? [] }
         switcher.onTileItem = { [weak self] item in self?.zonePicker.show(item) }
@@ -257,6 +274,40 @@ import UserNotifications
         }
         menu.addItem(.separator())
 
+        // Harici monitörler: parlaklık ve ses kaydırıcıları (Mac'in kendi ekranı yok)
+        let mon = Monitors.shared
+        if MonitorSettings.showInMenu {
+            mon.refresh()
+            if !mon.displays.isEmpty {
+                menu.addItem(header(L("Harici monitörler")))
+                for d in mon.displays {
+                    let title = NSMenuItem(title: d.ddc ? d.name : L("%@ · desteklemiyor", d.name), action: nil, keyEquivalent: "")
+                    title.isEnabled = false
+                    title.image = NSImage(systemSymbolName: "display", accessibilityDescription: nil)
+                    menu.addItem(title)
+                    let id = d.id
+                    let b = NSMenuItem()
+                    b.view = MenuSliderView(symbol: "sun.max.fill", value: d.brightness, enabled: d.ddc) { v in
+                        MainActor.assumeIsolated { Monitors.shared.setBrightness(v, for: id) }
+                    }
+                    menu.addItem(b)
+                    if d.volumeSupported {
+                        let v = NSMenuItem()
+                        v.view = MenuSliderView(symbol: "speaker.wave.2.fill", value: d.volume, enabled: d.ddc) { val in
+                            MainActor.assumeIsolated { Monitors.shared.setVolume(val, for: id) }
+                        }
+                        menu.addItem(v)
+                    }
+                }
+                if MonitorSettings.blackoutKey {
+                    let it = action(mon.isBlackedOut ? L("Parlaklığı geri getir  ⌘⇧<") : L("Monitörleri karart  ⌘⇧<"),
+                                    mon.isBlackedOut ? "sun.max" : "moon", #selector(toggleBlackoutFromMenu))
+                    menu.addItem(it)
+                }
+                menu.addItem(.separator())
+            }
+        }
+
         if capture.isRecording {
             let stop = NSMenuItem(title: L("Kaydı durdur"), action: #selector(stopRecording), keyEquivalent: "")
             stop.target = self
@@ -328,6 +379,8 @@ import UserNotifications
     @objc private func stopRecording() { capture.stopRecording() }
 
     @objc private func installUpdateFromMenu() { installUpdate() }
+
+    @objc private func toggleBlackoutFromMenu() { extraKeys.onBlackout?() }
 
     @objc private func checkUpdatesFromMenu() {
         // Menü kapansın, sonra simgenin altında açılsın
