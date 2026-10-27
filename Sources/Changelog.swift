@@ -16,6 +16,10 @@ struct ChangelogEntry {
 
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "2.4.2", items: [
+            ("Ekranlar karartılmışken klavye de kilitli: tuşlar arkadaki pencerelere gitmiyor, sadece ⌘⇧< ile geri açılıyor (ayarlardan kapatılabilir)",
+             "While displays are blacked out the keyboard is locked too: keys don't reach background windows, only ⌘⇧< brings them back (can be turned off)"),
+        ]),
         ChangelogEntry(version: "2.4.1", items: [
             ("⌘⇧< artık tam karartma: harici ekranlarda hiç görüntü kalmıyor (DDC desteklemeyen monitörlerde de)",
              "⌘⇧< now blacks out completely: no picture left on external displays (also on displays without DDC)"),

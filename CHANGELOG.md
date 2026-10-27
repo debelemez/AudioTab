@@ -3,6 +3,10 @@
 Also shown in the app: **Settings › Versions**, where you can switch to any released version.
 
 
+## 2.4.2
+
+- While displays are blacked out the keyboard is locked too: keys don't reach background windows, only ⌘⇧< brings them back (can be turned off)
+
 ## 2.4.1
 
 - ⌘⇧< now blacks out completely: no picture left on external displays (also on displays without DDC)

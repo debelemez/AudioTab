@@ -604,6 +604,10 @@ struct SettingsView: View {
                       isOn: model.bind({ MonitorSettings.showInMenu }, { MonitorSettings.showInMenu = $0 }))
             ToggleRow(L("⌘⇧< ile karart"), L("Harici monitörleri anında tamamen karartır, hiç görüntü kalmaz; tekrar basınca eski haline döner"),
                       isOn: model.bind({ MonitorSettings.blackoutKey }, { MonitorSettings.blackoutKey = $0 }))
+            if MonitorSettings.blackoutKey {
+                ToggleRow(L("Karartınca klavyeyi kilitle"), L("Ekranlar karanlıkken tuşlar hiçbir pencereye gitmez; sadece ⌘⇧< ile geri açarsın"),
+                          isOn: model.bind({ MonitorSettings.lockKeysWhenDark }, { MonitorSettings.lockKeysWhenDark = $0 }))
+            }
             Divider().opacity(0.4)
             if !monitors.ddcAvailable {
                 Text(L("Bu Mac'te monitör kontrolü desteklenmiyor (Apple Silicon gerekir)."))

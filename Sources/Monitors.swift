@@ -15,6 +15,11 @@ enum MonitorSettings {
         get { d.object(forKey: "monitors.menu") as? Bool ?? true }
         set { d.set(newValue, forKey: "monitors.menu") }
     }
+    /// Karartılmışken klavye arkadaki pencerelere yazmasın; sadece ⌘⇧< (geri açmak için) çalışır
+    static var lockKeysWhenDark: Bool {
+        get { d.object(forKey: "monitors.lockKeys") as? Bool ?? true }
+        set { d.set(newValue, forKey: "monitors.lockKeys") }
+    }
     /// ⌘⇧< ile harici monitörlerin parlaklığını 0'a çek / geri getir
     static var blackoutKey: Bool {
         get { d.object(forKey: "monitors.blackoutKey") as? Bool ?? true }

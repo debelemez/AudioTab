@@ -600,7 +600,9 @@ let tapCallback: CGEventTapCallBack = { _, type, event, _ in
     let flags = event.flags
     let swallow = MainActor.assumeIsolated { () -> Bool in
         gAudioKeys?.handle(type, code, flags)              // ses kısayolu (hiçbir tuşu yutmaz)
-        if gExtraKeys?.handle(type, code, flags, event) == true { return true }   // ⌘⇧3/4/5/6, ⌘<
+        if gExtraKeys?.handle(type, code, flags, event) == true { return true }   // ⌘⇧3/4/5/6, ⌘<, ⌘⇧<
+        // Harici ekranlar karartılmışken tuşlar arkadaki pencerelere gitmesin (⌘⇧< yukarıda zaten işlendi)
+        if (type == .keyDown || type == .keyUp), Monitors.shared.isBlackedOut, MonitorSettings.lockKeysWhenDark { return true }
         if gSwitcher?.isActive != true, FinderMouseNav.handle(type, event) { return true }   // fare 4/5: Finder'da geri/ileri
         return gSwitcher?.handle(type, code, flags) ?? false
     }
